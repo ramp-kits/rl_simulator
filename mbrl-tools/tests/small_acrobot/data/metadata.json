@@ -1,0 +1,9 @@
+{
+    "timestamp_name": "",
+    "observation": ["theta_1", "theta_2", "theta_dot_1", "theta_dot_2"],
+    "action": ["torque"],
+    "reward": ["reward"],
+    "restart_name": "restart",
+    "n_burn_in": 0
+}
+

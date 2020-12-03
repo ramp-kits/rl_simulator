@@ -1,0 +1,8 @@
+__pycache__/
+*.egg-info/
+*.tch
+*.html
+params/
+
+mbrl_outputs/
+training_output/
