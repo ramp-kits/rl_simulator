@@ -1,0 +1,9 @@
+{
+    "timestamp_name": "",
+    "observation": ["pos", "pole_angle", "vel", "pole_vel"],
+    "action": ["action"],
+    "reward": ["reward"],
+    "restart_name": "restart",
+    "n_burn_in": 0
+}
+
