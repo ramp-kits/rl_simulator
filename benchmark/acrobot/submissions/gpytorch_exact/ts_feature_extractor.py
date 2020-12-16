@@ -1,4 +1,3 @@
-import pandas as pd
 import numpy as np
 
 FEATURE_NAMES = ['theta_dot_2', 'theta_2', 'theta_dot_1', 'theta_1', 'torque',

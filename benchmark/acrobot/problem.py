@@ -7,7 +7,7 @@ import pandas as pd
 import rampwf as rw
 
 problem_title = 'Acrobot system identification'
-_max_n_components = 100  # max number of components
+_max_n_components = 100  # max number of components of a mixture
 
 metadata_path = os.path.join('data', 'metadata.json')
 with open(metadata_path, "r") as json_file:
