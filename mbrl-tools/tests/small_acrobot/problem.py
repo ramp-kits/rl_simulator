@@ -8,7 +8,7 @@ import rampwf as rw
 
 
 problem_title = 'Acrobot system identification'
-_max_dists = 100  # max number of kernels to use in generative regressors
+_max_n_components = 100  # max number of components
 
 metadata_path = os.path.join('data', 'metadata.json')
 with open(metadata_path, "r") as json_file:
@@ -24,13 +24,13 @@ if timestamp_name == '':
     timestamp_name = 'fake_ts'
 
 Predictions = rw.prediction_types.make_generative_regression(
-    _max_dists, label_names=_target_column_observation_names)
+    _max_n_components, label_names=_target_column_observation_names)
 
 score_types = [
     rw.score_types.MDLikelihoodRatio('lr', precision=2),
     rw.score_types.MDOutlierRate('or', precision=4),
     rw.score_types.MDR2('r2', precision=6),
-    rw.score_types.MDKSCalibration('ks', precision=4, plot=False),
+    rw.score_types.MDKSCalibration('ks', precision=4),
 ]
 _score_types = copy.deepcopy(score_types)
 for o_i, o in enumerate(_target_column_observation_names):
@@ -44,8 +44,8 @@ cv = rw.cvs.PerRestart(restart_name=_restart_name)
 get_cv = cv.get_cv
 
 workflow = rw.workflows.TSFEGenReg(
-    # check_sizes=[137], check_indexs=[13], max_dists=_max_dists,
-    check_sizes=None, check_indexs=None, max_dists=_max_dists,
+    # check_sizes=[137], check_indexs=[13], max_n_components=_max_n_components,
+    check_sizes=None, check_indexs=None, max_n_components=_max_n_components,
     target_column_observation_names=_target_column_observation_names,
     target_column_action_names=_target_column_action_names,
     restart_name=_restart_name,
