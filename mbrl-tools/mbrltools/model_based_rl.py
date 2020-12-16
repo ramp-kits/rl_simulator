@@ -30,6 +30,7 @@ from .model_env import make_model_env_class
               help="The minimum number of steps for each epoch given that "
               "each epoch ends by a complete episode.")
 @click.option("--min-random-steps", default=None, show_default=True,
+              type=click.INT,
               help="The minimum number of steps done at the first epoch"
               " with the random policy if initial-trace is set to False. "
               "If None then it is equal to min-epoch-steps.")
