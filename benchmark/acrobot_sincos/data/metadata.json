@@ -3,7 +3,7 @@
     "observation": ["cos_theta_1", "sin_theta_1", "cos_theta_2", "sin_theta_2", "theta_dot_1", "theta_dot_2"],
     "action": ["torque"],
     "reward": ["reward"],
-    "restart_name": "is_done",
+    "restart_name": "restart",
     "n_burn_in": 0
 }
 
