@@ -168,14 +168,14 @@ def rollout(system_env, n_action_features,
 
         epoch_step += episode_step
 
-        if episodic_update:
-            # one epoch is exactly one episode
-            break
-
         print('Number of episode steps:', episode_step)
         print('Mean reward:', np.mean(rewards))
         print('Return:', np.sum(rewards))
         print('Number of epoch steps:', epoch_step)
+
+        if episodic_update:
+            # one epoch is exactly one episode
+            break
 
     return trace
 
