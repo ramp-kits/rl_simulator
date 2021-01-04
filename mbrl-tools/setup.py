@@ -22,7 +22,7 @@ setuptools.setup(
     ],
     entry_points={
         'console_scripts': [
-            'model-based-rl = mbrltools.model_based_rl:model_based_rl',
+            'model-based-rl = mbrltools.model_based_rl:model_based_rl_command',
         ],
     },
     python_requires='>=3.6',

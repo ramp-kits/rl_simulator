@@ -13,38 +13,6 @@ from .data_processing import rollout
 from .model_env import make_model_env_class
 
 
-@click.command()
-@click.option('--agent-name', default='random_shooting', show_default=True,
-              type=click.STRING, help="Agent.")
-@click.option("--submission", default="real_system", show_default=True,
-              type=click.STRING,
-              help="Model submission. Choose 'real_system' if you want to "
-              "use the real environment.")
-@click.option("--n-epochs", default=100, show_default=True, type=click.INT,
-              help="The number of epochs. If the submission is not the real "
-              "system, the model is updated at each epoch. If initial-trace "
-              "is set to True the first epoch is assumed to be the initial "
-              "trace.")
-@click.option("--min-epoch-steps", default=200, show_default=True,
-              type=click.INT,
-              help="The minimum number of steps for each epoch given that "
-              "each epoch ends by a complete episode.")
-@click.option("--min-random-steps", default=None, show_default=True,
-              type=click.INT,
-              help="The minimum number of steps done at the first epoch"
-              " with the random policy if initial-trace is set to False. "
-              "If None then it is equal to min-epoch-steps.")
-@click.option("--episodic-update", default=False, show_default=True,
-              type=click.BOOL,
-              help="Whether to update the model after each episode such that "
-              "one epoch is exaclty one episode.")
-@click.option("--initial-trace", default=False, show_default=True,
-              type=click.BOOL, help="Whether an initial trace is available. "
-              "If True, the initial trace should be stored under trace.csv in "
-              "output/<submission>/<agent_name>/seed_<seed>/epoch_0/.")
-@click.option("--seed", default=0, show_default=True,
-              help="Seed of the random number generator. Only the numpy and "
-              "pytorch global random generators are seeded.")
 def model_based_rl(agent_name, submission,
                    n_epochs, min_epoch_steps, min_random_steps,
                    episodic_update, initial_trace,
@@ -158,5 +126,47 @@ def model_based_rl(agent_name, submission,
             model_env.train_model(epoch=epoch)
 
 
+@click.command()
+@click.option('--agent-name', default='random_shooting', show_default=True,
+              type=click.STRING, help="Agent.")
+@click.option("--submission", default="real_system", show_default=True,
+              type=click.STRING,
+              help="Model submission. Choose 'real_system' if you want to "
+              "use the real environment.")
+@click.option("--n-epochs", default=100, show_default=True, type=click.INT,
+              help="The number of epochs. If the submission is not the real "
+              "system, the model is updated at each epoch. If initial-trace "
+              "is set to True the first epoch is assumed to be the initial "
+              "trace.")
+@click.option("--min-epoch-steps", default=200, show_default=True,
+              type=click.INT,
+              help="The minimum number of steps for each epoch given that "
+              "each epoch ends by a complete episode.")
+@click.option("--min-random-steps", default=None, show_default=True,
+              type=click.INT,
+              help="The minimum number of steps done at the first epoch"
+              " with the random policy if initial-trace is set to False. "
+              "If None then it is equal to min-epoch-steps.")
+@click.option("--episodic-update", default=False, show_default=True,
+              type=click.BOOL,
+              help="Whether to update the model after each episode such that "
+              "one epoch is exaclty one episode.")
+@click.option("--initial-trace", default=False, show_default=True,
+              type=click.BOOL, help="Whether an initial trace is available. "
+              "If True, the initial trace should be stored under trace.csv in "
+              "output/<submission>/<agent_name>/seed_<seed>/epoch_0/.")
+@click.option("--seed", default=0, show_default=True,
+              help="Seed of the random number generator. Only the numpy and "
+              "pytorch global random generators are seeded.")
+def model_based_rl_command(agent_name, submission,
+                           n_epochs, min_epoch_steps, min_random_steps,
+                           episodic_update, initial_trace,
+                           seed):
+    return model_based_rl(
+        agent_name, submission, n_epochs, min_epoch_steps, min_random_steps,
+        episodic_update, initial_trace, seed
+    )
+
+
 if __name__ == "__main__":
-    model_based_rl()
+    model_based_rl_command()
