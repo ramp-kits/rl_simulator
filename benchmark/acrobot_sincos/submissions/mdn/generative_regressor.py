@@ -1,34 +1,27 @@
-import os
-
 import numpy as np
+
 from sklearn.base import BaseEstimator
+
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
 
-from deepnap import load_model, train_model, store_init_params
+from mbrltools.pytorch_utils import train
 
-HOME = os.path.dirname(os.path.realpath(__file__))
-EXP_NAME = "Best_for_saving"
-
-load_model_from_file = False
-model_file = HOME + "\\first_fold\\model_with_restart_all-data"
+torch.manual_seed(7)
 
 n_epochs = 300
 LR = 5e-4
-NB_LAYERS = 2
+N_LAYERS_COMMON = 2
 LAYER_SIZE = 200
 BATCH_SIZE = 50
-DECAY = 0
-VAL_SIZE = 0.1
+VALIDATION_FRACTION = 0.1
 
 DROP_FIRST = 0
 DROP_REPEATED = 1e-1
-NB_GAUSSIANS = 10
+N_GAUSSIANS = 10
 
 MSE = nn.MSELoss()
-
-torch.manual_seed(7)
 
 CONST = np.sqrt(2 * np.pi)
 
@@ -61,37 +54,29 @@ class CustomLoss:
 
 
 class GenerativeRegressor(BaseEstimator):
-    def __init__(self, max_dists, model_index,
-                 load_model_from_file=load_model_from_file):
-
-        self.model_file = model_file
-        if load_model_from_file:
-            self.model = load_model(self.model_file)
-        else:
-            self.model = None
+    def __init__(self, max_dists, target_dim):
         self.max_dists = max_dists
         self.decomposition = None
 
     def fit(self, X_in, y_in):
 
         if self.model is None:
-            self.model = SimpleBinnedNoBounds(NB_GAUSSIANS, X_in.shape[1],
+            self.model = SimpleBinnedNoBounds(N_GAUSSIANS, X_in.shape[1],
                                               y_in.shape[1])
             dataset = torch.utils.data.TensorDataset(
                 torch.Tensor(X_in), torch.Tensor(y_in))
             optimizer = optim.Adam(
-                self.model.parameters(), lr=LR, weight_decay=DECAY,
-                amsgrad=True)
+                self.model.parameters(), lr=LR, amsgrad=True)
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer, 'min', factor=0.1, patience=30, cooldown=20,
                 min_lr=1e-7, verbose=True)
             loss = CustomLoss()
-            self.model, _ = train_model(
-                self.model, dataset, validation_fraction=VAL_SIZE,
+            self.model, _ = train(
+                self.model, dataset, validation_fraction=VALIDATION_FRACTION,
                 optimizer=optimizer, scheduler=scheduler,
                 n_epochs=n_epochs, batch_size=BATCH_SIZE, loss_fn=loss,
-                return_best_model="Loss", disable_cuda=True
-                # tensorboard_path=tensorboard_path,
+                return_best_model=True, disable_cuda=True
+
                 )
 
     def predict(self, X):
@@ -115,16 +100,16 @@ class GenerativeRegressor(BaseEstimator):
         params[:, 1::2] = sigmas.reshape(n_samples, -1)
 
         # gaussian has type 0
-        types = ['norm'] * NB_GAUSSIANS * mus.shape[1]
+        types = ['norm'] * N_GAUSSIANS * mus.shape[1]
 
         return weights.reshape(n_samples, -1), types, params
 
 
 class OutputModule(nn.Module):
-    def __init__(self, nb_sigmas):
+    def __init__(self, n_sigmas):
         super(OutputModule, self).__init__()
-        output_size_sigma = nb_sigmas
-        output_size_mus = nb_sigmas
+        output_size_sigma = n_sigmas
+        output_size_mus = n_sigmas
         layer_size = LAYER_SIZE
         self.mu = nn.Sequential(
             nn.Linear(layer_size, layer_size),
@@ -146,11 +131,10 @@ class OutputModule(nn.Module):
 
 
 class SimpleBinnedNoBounds(nn.Module):
-    def __init__(self, nb_sigmas, input_size, nb_y):
+    def __init__(self, n_sigmas, input_size, nb_y):
         super(SimpleBinnedNoBounds, self).__init__()
-        n_layers_common = NB_LAYERS
+        n_layers_common = N_LAYERS_COMMON
         layer_size = LAYER_SIZE
-        store_init_params(self, [nb_sigmas, input_size])
 
         self.linear0 = nn.Linear(input_size, layer_size)
         self.act0 = nn.Tanh()
@@ -169,10 +153,10 @@ class SimpleBinnedNoBounds(nn.Module):
 
         self.detached_blocks = nn.ModuleList()
         for j in range(nb_y):
-            self.detached_blocks.append(OutputModule(nb_sigmas))
+            self.detached_blocks.append(OutputModule(n_sigmas))
 
         self.w = nn.Sequential(
-            nn.Linear(layer_size, nb_sigmas),
+            nn.Linear(layer_size, n_sigmas),
             nn.Softmax(dim=1)
         )
 

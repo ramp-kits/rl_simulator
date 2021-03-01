@@ -1,36 +1,17 @@
-import torch.nn as nn
-import torch.optim as optim
 import numpy as np
-import torch.utils.data
+
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler
-from deepnap.utils import _set_device
-import json
-import torch.nn.init as init
-from deepnap import *
 
+import torch
 import gpytorch
-import os
-
-HOME = os.path.dirname(os.path.realpath(__file__))
-
-
-
-num_epochs = 100
-DECAY = 0
-LR = 1e-1
-NB_LAYERS = 2
-BATCH = 1000
-device = "cpu"
-VAL_SIZE = 0.15
-
-PATIENCE = 15
-NB_GAUSSIANS = 1
-
-EPSILON = 1e-12
-LAYER_SIZE = 140
 
 torch.manual_seed(7)
+
+n_epochs = 100
+LR = 1e-1
+
+N_GAUSSIANS = 1
 
 GP_HYPERS = {
     'likelihood.noise_covar.noise': torch.tensor(0.01),
@@ -60,25 +41,25 @@ class GenerativeRegressor(BaseEstimator):
                 amplitude = 0.5
                 length_scales = 6 * np.ones(X_in.shape[1])
                 length_scales[-1] = 0.9
-                num_epochs = 50
+                n_epochs = 50
             if self.model_index == 1:
                 noise = 0.01
                 amplitude = 0.5
                 length_scales = 6 * np.ones(X_in.shape[1])
                 length_scales[-1] = 0.9
-                num_epochs = 50
+                n_epochs = 50
             if self.model_index == 2:
                 noise = 0.01
                 amplitude = 0.5
                 length_scales = 6 * np.ones(X_in.shape[1])
                 length_scales[-1] = 0.9
-                num_epochs = 50
+                n_epochs = 50
             if self.model_index == 3:
                 noise = 0.01
                 amplitude = 0.5
                 length_scales = 6 * np.ones(X_in.shape[1])
                 length_scales[-1] = 0.9
-                num_epochs = 50
+                n_epochs = 50
 
             GP_HYPERS['likelihood.noise_covar.noise'] =\
                 torch.tensor(noise)
@@ -109,7 +90,7 @@ class GenerativeRegressor(BaseEstimator):
             mll = gpytorch.mlls.ExactMarginalLogLikelihood(
                 self.lk, self.model)
 
-            for i in range(num_epochs):
+            for i in range(n_epochs):
                 # Zero gradients from previous iteration
                 optimizer.zero_grad()
                 # Output from model
@@ -121,12 +102,15 @@ class GenerativeRegressor(BaseEstimator):
 
                 length_scales = np.array2string(
                     self.model.covar_module.base_kernel.lengthscale.detach()
-                    .numpy(), precision = 2)
+                    .numpy(),
+                    precision=2)
                 print(
-                    f"Iter {i + 1}/{num_epochs} - Loss: {loss.item():.3f}"
-                    f" - noise : {self.model.likelihood.noise_covar.noise.item():.6f}"
+                    f"Iter {i + 1}/{n_epochs} - Loss: {loss.item():.3f}"
+                    " - noise : "
+                    f"{self.model.likelihood.noise_covar.noise.item():.6f}"
                     f" - lengthscale : {length_scales}"
-                    f" - outputscale : {self.model.covar_module.outputscale.item():.3f}"
+                    " - outputscale : "
+                    f"{self.model.covar_module.outputscale.item():.3f}"
                 )
 
                 optimizer.step()
@@ -135,9 +119,6 @@ class GenerativeRegressor(BaseEstimator):
         self.model.eval()
         X = self.scaler_x.transform(X)
         X_in = torch.Tensor(X)
-        batch = BATCH
-        num_data = X.shape[0]
-        num_batches = int(num_data / batch) + 1
 
         # Get into evaluation (predictive posterior) mode
         self.model.eval()
@@ -160,13 +141,13 @@ class GenerativeRegressor(BaseEstimator):
         weights = np.ones((len(X_in), 1))
 
         # We put each mu next to its sigma
-        params = np.empty((len(X_in), NB_GAUSSIANS * 2))
+        params = np.empty((len(X_in), N_GAUSSIANS * 2))
         params[:, 0::2] = mus
         params[:, 1::2] = sigmas
 
         # The last generative regressors is uniform,
         # the others are gaussians
-        types = np.zeros(NB_GAUSSIANS)
+        types = np.zeros(N_GAUSSIANS)
         types = np.array([types] * len(X_in))
 
         return weights, types, params

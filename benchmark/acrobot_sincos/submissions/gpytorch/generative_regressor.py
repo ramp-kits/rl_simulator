@@ -1,29 +1,15 @@
-import torch.nn as nn
-import torch.optim as optim
 import numpy as np
-import torch.utils.data
+
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler
-from deepnap.utils import _set_device
-import json
-import torch.nn.init as init
-from deepnap import *
 
+import torch
 import gpytorch
-import os
 
-HOME = os.path.dirname(os.path.realpath(__file__))
-
-
-DECAY = 0
-LR = 5e-2
-BATCH = 1000
-device = "cpu"
-VAL_SIZE = 0.15
-
-PATIENCE = 15
-NB_GAUSSIANS = 1
 torch.manual_seed(7)
+
+LR = 5e-2
+N_GAUSSIANS = 1
 
 torch.set_default_tensor_type(torch.DoubleTensor)
 
@@ -34,16 +20,16 @@ GP_HYPERS = {
 
 
 class GenerativeRegressor(BaseEstimator):
-    def __init__(self, max_dists, model_index):
+    def __init__(self, max_dists, target_dim):
 
         self.model = None
         self.max_dists = max_dists
-        self.model_index = model_index
+        self.target_dim = target_dim
 
         self.scaler_y = StandardScaler()
         self.scaler_x = StandardScaler()
 
-        print(f"Experiment number : {model_index}")
+        print(f"Experiment number : {target_dim}")
 
     def fit(self, X_in, y_in):
 
@@ -56,32 +42,32 @@ class GenerativeRegressor(BaseEstimator):
         #y_in =+ 1e-3 * torch.randn_like(y_in)
         X_in = torch.Tensor(X_in)
         if self.model is None:
-            if self.model_index == 0:
+            if self.target_dim == 0:
                 noise = 0.000004
                 amplitude = 0.5
                 length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
                 num_epochs = 1
-            if self.model_index == 1:
+            if self.target_dim == 1:
                 noise = 0.0001
                 amplitude = 1.0
                 length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
                 num_epochs = 1
-            if self.model_index == 2:
+            if self.target_dim == 2:
                 noise = 0.0001
                 amplitude = 2.5
                 length_scales = np.array([1.82, 11.3, 31.83, 6.89, 13.38, 4.23, 2.75, 12.53])
                 num_epochs = 1
-            if self.model_index == 3:
+            if self.target_dim == 3:
                 noise = 0.00005
                 amplitude = 2.5
                 length_scales = np.array([1.67, 7.4, 30.73, 6.85, 11.84, 3.33, 2.75, 11.58])
                 num_epochs = 1
-            if self.model_index == 4:
+            if self.target_dim == 4:
                 noise = 0.00005
                 amplitude = 1.5
                 length_scales = np.array([1.69, 3.2, 36.56, 11.16, 16.88, 2.97, 4.82, 11.62])
                 num_epochs = 1
-            if self.model_index == 5:
+            if self.target_dim == 5:
                 noise = 0.00005
                 amplitude = 2.5
                 length_scales = np.array([2.27, 2.8, 39.75, 14.13, 14.15, 4.03, 4.68, 12.01])
@@ -125,14 +111,16 @@ class GenerativeRegressor(BaseEstimator):
                 loss.backward()
                 loss.item()
 
-                lscales = np.array2string(self.model.base_covar_module.
-                                          base_kernel.lengthscale.detach()
-                                          .numpy(), precision = 2
-                                          )
+                lscales = np.array2string(
+                    self.model.base_covar_module.base_kernel.lengthscale
+                    .detach().numpy(),
+                    precision=2)
                 print(f"Iter {i + 1}/{num_epochs} - Loss: {loss.item():.3f}"
-                      f" - noise : {self.model.likelihood.noise_covar.noise.item():.3f}"
+                      " - noise : "
+                      f"{self.model.likelihood.noise_covar.noise.item():.3f}"
                       f" - lengthscale : {lscales}"
-                      f" - outputscale : {self.model.base_covar_module.outputscale.item():.3f}"
+                      " - outputscale : "
+                      f"{self.model.base_covar_module.outputscale.item():.3f}"
                       )
 
                 optimizer.step()
@@ -143,9 +131,6 @@ class GenerativeRegressor(BaseEstimator):
 
         X = self.scaler_x.transform(X)
         X_in = torch.Tensor(X)
-        batch = BATCH
-        num_data = X.shape[0]
-        num_batches = int(num_data / batch) + 1
 
         # Get into evaluation (predictive posterior) mode
         self.model.eval()
@@ -157,7 +142,8 @@ class GenerativeRegressor(BaseEstimator):
             observed_pred = self.lk(self.model(X_in))
 
         mus = observed_pred.mean.view(-1, 1).detach().numpy()[:len(X_in), :]
-        sigmas = observed_pred.variance.view(-1, 1).detach().numpy()[:len(X_in), :]
+        sigmas = observed_pred.variance.view(-1, 1).detach().numpy()
+        sigmas = sigmas[:len(X_in), :]
 
         sigmas = np.sqrt(sigmas)
 
@@ -168,13 +154,13 @@ class GenerativeRegressor(BaseEstimator):
         weights = np.ones((len(X_in), 1))
 
         # We put each mu next to its sigma
-        params = np.empty((len(X_in), NB_GAUSSIANS * 2))
+        params = np.empty((len(X_in), N_GAUSSIANS * 2))
         params[:, 0::2] = mus
         params[:, 1::2] = sigmas
 
         # The last generative regressors is uniform,
         # the others are gaussians
-        types = np.zeros(NB_GAUSSIANS)
+        types = np.zeros(N_GAUSSIANS)
         types = np.array([types] * len(X_in))
 
         return weights, types, params
@@ -186,7 +172,7 @@ class ExactGPModel(gpytorch.models.ExactGP):
 
         self.mean_module = gpytorch.means.ConstantMean()
         self.base_covar_module = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.RBFKernel(ard_num_dims=train_x.shape[1] ))
+            gpytorch.kernels.RBFKernel(ard_num_dims=train_x.shape[1]))
         inducing_indices = np.random.choice(
             range(len(train_x)), min(len(train_x), 1000), replace=False)
         self.covar_module = gpytorch.kernels.InducingPointKernel(

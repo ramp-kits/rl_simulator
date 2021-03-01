@@ -1,16 +1,16 @@
 import numpy as np
+
 from sklearn.base import BaseEstimator
+
 import torch
 import torch.optim as optim
 import torch.nn as nn
 
-from deepnap import train_model
+from mbrltools.pytorch_utils import train
 
 n_epochs = 100
 batch_size = 200
-
-VALID = 0.05
-_set_device = torch.device('cpu')
+validation_fraction = 0.05
 
 
 class GenerativeRegressor(BaseEstimator):
@@ -39,9 +39,9 @@ class GenerativeRegressor(BaseEstimator):
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, 'min', factor=0.1, patience=30, verbose=True)
 
-        train_model(
-            self.model, dataset, validation_fraction=VALID,
-            return_best_model="Loss", optimizer=optimizer,
+        train(
+            self.model, dataset, validation_fraction=validation_fraction,
+            return_best_model=True, optimizer=optimizer,
             scheduler=scheduler, n_epochs=n_epochs, batch_size=batch_size,
             loss_fn=nn.MSELoss(), disable_cuda=True)
 
