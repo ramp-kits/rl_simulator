@@ -1,11 +1,12 @@
 import warnings
 
-from sklearn.base import BaseEstimator
+from rampwf.utils import BaseGenerativeRegressor
+
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
 
-class GenerativeRegressor(BaseEstimator):
+class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
         """
         Parameters

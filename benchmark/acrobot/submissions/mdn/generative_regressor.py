@@ -1,6 +1,7 @@
 import numpy as np
 
-from sklearn.base import BaseEstimator
+from rampwf.utils import BaseGenerativeRegressor
+
 
 import torch.nn as nn
 import torch.optim as optim
@@ -53,7 +54,7 @@ class CustomLoss:
         return nll
 
 
-class GenerativeRegressor(BaseEstimator):
+class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists):
         self.max_dists = max_dists
         self.decomposition = None

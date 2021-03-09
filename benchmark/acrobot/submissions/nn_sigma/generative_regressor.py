@@ -1,6 +1,6 @@
 import numpy as np
 
-from sklearn.base import BaseEstimator
+from rampwf.utils import BaseGenerativeRegressor
 
 import torch
 import torch.optim as optim
@@ -13,7 +13,7 @@ batch_size = 200
 validation_fraction = 0.05
 
 
-class GenerativeRegressor(BaseEstimator):
+class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
         """
         Parameters

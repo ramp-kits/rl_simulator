@@ -1,6 +1,7 @@
 import numpy as np
 
-from sklearn.base import BaseEstimator
+
+from rampwf.utils import BaseGenerativeRegressor
 from sklearn.preprocessing import StandardScaler
 
 import torch
@@ -19,7 +20,7 @@ GP_HYPERS = {
 }
 
 
-class GenerativeRegressor(BaseEstimator):
+class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
         self.model = None
         self.max_dists = max_dists

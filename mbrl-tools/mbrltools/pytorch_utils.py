@@ -31,62 +31,79 @@ def _set_device(disable_cuda=False):
     return device
 
 
+
+
 def train(model, dataset_train, dataset_valid=None,
-          validation_fraction=None,
-          n_epochs=10, batch_size=128, loss_fn=nn.MSELoss(),
-          optimizer=None, scheduler=None, return_best_model=False,
-          disable_cuda=False,
-          batch_size_predict=None, drop_last=False):
+                validation_fraction=None,
+                n_epochs=10, batch_size=128, loss_fn=nn.MSELoss(),
+                optimizer=None, scheduler=None, return_best_model=False,
+                save_model_file=None, disable_cuda=False,
+                batch_size_predict=None, drop_last=False,
+                numpy_random_state=None, is_vae=False, is_nvp=False,
+                is_packed_autoreg=False, val_loss_fn= None, verbose=True,
+                shuffle=True):
     """Training model using the provided dataset and given loss function.
 
-    Parameters
-    ----------
-    model : pytorch nn.Module
-        Model to be trained.
     dataset_train : Tensor dataset.
         Training data set.
+
     dataset_valid : Tensor dataset.
         If not None, data set used to compute a validation loss. This data set
         is not used to train the model.
+
     validation_fraction : float in (0, 1).
         If not None, fraction of samples from dataset to put aside to be
         use as a validation set. If dataset_valid is not None then
         dataset_valid overrides validation_fraction.
-    n_epochs : int
-        Number of epochs
-    batch_size : int
-        Batch size.
-    loss_fn : function
-        Pytorch loss function.
-    optimizer : object
-        Pytorch optimizer
-    scheduler : object
-        Pytorch scheduler.
+
     return_best_model : bool
         Whether to return the best model on the validation loss. More exactly,
-        if set to True, the model trained at the epoch that leads to the best
+        if set to True, the model trained at the epoch that lead to the best
         performance on the validation dataset is returned. In this case the
         best validation loss is also returned.
-    disable_cuda : bool
-        Whether to use CPU instead of GPU.
+
     batch_size_predict : int
         Batch size to use for the computation of the validation loss
         in case of a very large valid dataset. If None, no batch size is used.
+
     drop_last : bool
         Whether to drop the last batch in the dataloader if incomplete.
 
-    Returns
-    -------
-    model : pytorch nn.Module
-        Trained model. If return_best_model is set to True the best validation
-        loss is also returned.
+    numpy_random_state : int or numpy RNG
+        Used when shuffling the training dataset before splitting it into
+        a training and a validation datasets.
+
+    is_vae : bool
+        Whether the model we are training is a VAE.
+
+    is_nvp : bool
+        Whether the model we are training is a RealNVP.
+
+    is_packed_autoreg : bool
+        Whether the model we are training is autoregressive and embedded in
+        one single model.
+
+    val_loss_fn : function
+        The function to be used for valid loss.
+        If None, train_loss will be used.
+
+    verbose : bool
+        Whether to print training information.
+
+    shuffle : bool
+        Whether to drop shuffle the data.
+
     """
     # use GPU by default if cuda is available, otherwise use CPU
     device = _set_device(disable_cuda=disable_cuda)
     model = model.to(device)
+    numpy_rng = np.random.default_rng(numpy_random_state)
 
     if optimizer is None:
         optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+    if val_loss_fn is None:
+        val_loss_fn = loss_fn
 
     # dataset_valid has priority over validation_fraction. if no dataset_valid
     # but validation fraction then build dataset_train and dataset_valid
@@ -97,7 +114,8 @@ def train(model, dataset_train, dataset_valid=None,
 
         n_samples = len(dataset_train)
         indices = np.arange(n_samples)
-        np.random.shuffle(indices)
+        if shuffle:
+            numpy_rng.shuffle(indices)
         ind_split = int(np.floor(validation_fraction * n_samples))
         train_indices, val_indices = indices[ind_split:], indices[:ind_split]
         dataset_valid = data.TensorDataset(*dataset_train[val_indices])
@@ -111,11 +129,13 @@ def train(model, dataset_train, dataset_valid=None,
             best_val_loss = np.inf
 
     dataset_train = data.DataLoader(dataset_train, batch_size=batch_size,
-                                    shuffle=True, drop_last=drop_last)
+                                    shuffle=shuffle, drop_last=drop_last)
+
     n_train = len(dataset_train.dataset)
 
     val_scheduler = isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau)
 
+    track_grads=[]
     for epoch in range(n_epochs):
 
         model.train()
@@ -126,45 +146,81 @@ def train(model, dataset_train, dataset_valid=None,
         train_loss = 0
 
         # training
-        for (idx, (x, y)) in enumerate(dataset_train):
+        for (idx, batch) in enumerate(dataset_train):
+            (x, y) = batch
             x, y = x.to(device), y.to(device)
             x, y = Variable(x), Variable(y)
             model.zero_grad()
-
-            out = model(x)
-            loss = loss_fn(y, out)
-
+            if is_vae or is_packed_autoreg:
+                out = model(y, x)
+                loss = loss_fn(y, out)
+                train_loss += len(x) * loss.item()
+            elif is_nvp:
+                loss = -loss_fn(y, x).sum()
+                train_loss += loss.item()
+            else:
+                out = model(x)
+                loss = loss_fn(y, out)
+                train_loss += len(x) * loss.item()
             # update training loss
-            train_loss += len(x) * loss.item()
-
             # backward and optimization
             loss.backward()
+
+
+
             optimizer.step()
+        # end of epoch
+        if save_model_file is not None:
+            save_model(model, save_model_file)
 
         train_loss /= n_train
 
-        if dataset_valid is None:
-            print('[{}/{}] Training loss: {:.4f}'
-                  .format(epoch, n_epochs-1, train_loss))
-        else:
-            print('[{}/{}] Training loss: {:.4f}'
-                  .format(epoch, n_epochs-1, train_loss), end='\t')
+        if verbose:
+            if dataset_valid is None:
+                print('[{}/{}] Training loss: {:.4f}'
+                      .format(epoch, n_epochs - 1, train_loss))
+            else:
+                print('[{}/{}] Training loss: {:.4f}'
+                      .format(epoch, n_epochs - 1, train_loss), end='\t')
 
         # loss on validation set
         if dataset_valid is not None:
-            y_valid_pred = predict(model, X_valid,
-                                   batch_size=batch_size_predict,
-                                   disable_cuda=disable_cuda, verbose=0)
-            val_loss = loss_fn(y_valid, y_valid_pred).item()
-            print('Validation loss: {:.4f}'.format(val_loss))
+            if not is_nvp:
+                y_valid_pred = predict(model, X_valid,
+                                       batch_size=batch_size_predict,
+                                       disable_cuda=disable_cuda, verbose=0,
+                                       is_vae=is_vae, shuffle=shuffle,
+                                       is_packed_autoreg=is_packed_autoreg)
+                if is_vae:
+                    y_valid_pred = [y_valid_pred, *model.encode(y_valid, X_valid)]
+                val_loss = val_loss_fn(y_valid, y_valid_pred).item()
+            else:
+                model.eval()
+                val_loss = 0
+                for batch_idx, data_t in enumerate(dataset_valid):
+                    cond_data = data_t[0].float()
+                    cond_data = cond_data.to(device)
+                    data_t = data_t[1]
+                    data_t = data_t.to(device)
+                    with torch.no_grad():
+                        val_loss += -val_loss_fn(data_t, cond_data).mean().item()  # sum up batch loss
+
+                val_loss = val_loss / len(dataset_valid)
+            if verbose:
+                print('Validation loss: {:.4f}'.format(val_loss))
 
             if val_scheduler:
                 scheduler.step(val_loss)
 
             if return_best_model:
                 if val_loss < best_val_loss:
-                    best_model = copy.deepcopy(model)  # XXX I don't like this
-                    best_val_loss = val_loss
+                    if isinstance(model, torch.jit.RecursiveScriptModule):
+                        model.save("my_model")
+                        best_model = torch.jit.load("my_model")
+                        best_val_loss = val_loss
+                    else:
+                        best_model = copy.deepcopy(model)  # XXX I don't like this
+                        best_val_loss = val_loss
 
     # return best model and best val loss if we want it
     if (dataset_valid is not None) and return_best_model:
@@ -173,15 +229,19 @@ def train(model, dataset_train, dataset_valid=None,
             best_model = model
             y_valid_pred = predict(best_model, X_valid,
                                    batch_size=batch_size_predict,
-                                   disable_cuda=disable_cuda, verbose=0)
-            best_val_loss = loss_fn(y_valid, y_valid_pred).item()
+                                   disable_cuda=disable_cuda, verbose=0,
+                                   shuffle=shuffle, 
+                                   is_packed_autoreg=is_packed_autoreg)
+            if is_vae:
+                y_valid_pred = [y_valid_pred, model.encode(y_valid, X_valid)]
+            best_val_loss = val_loss_fn(y_valid, y_valid_pred).item()
 
         return best_model, best_val_loss
 
     return model
 
-
-def predict(model, dataset, batch_size=None, disable_cuda=False, verbose=0):
+def predict(model, dataset, batch_size=None, disable_cuda=False, verbose=0,
+            is_vae=False, shuffle=True,is_packed_autoreg=False,):
     """Predict outputs of dataset using trained model"""
 
     if batch_size is None:
@@ -190,12 +250,15 @@ def predict(model, dataset, batch_size=None, disable_cuda=False, verbose=0):
     model.eval()
     device = _set_device(disable_cuda=disable_cuda)
 
-    dataset = data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    dataset = data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     predictions = []
     with torch.no_grad():
         for i, x in enumerate(dataset):
             x = x.to(device)
-            predictions.append(model.forward(x).cpu())
+            if is_vae or is_packed_autoreg:
+                predictions.append(model.sample(x).cpu())
+            else:
+                predictions.append(model.forward(x).cpu())
 
             if verbose > 1 and i % 100 == 0:
                 print('[{}/{}]'.format(i, len(dataset)))

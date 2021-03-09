@@ -1,6 +1,7 @@
 import numpy as np
 
-from sklearn.base import BaseEstimator
+from rampwf.utils import BaseGenerativeRegressor
+
 from sklearn.preprocessing import StandardScaler
 
 import torch
@@ -19,7 +20,7 @@ GP_HYPERS = {
 }
 
 
-class GenerativeRegressor(BaseEstimator):
+class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
 
         self.model = None
@@ -39,7 +40,6 @@ class GenerativeRegressor(BaseEstimator):
         y_in = self.scaler_y.transform(y_in)
         y_in = torch.Tensor(y_in).view(-1)
 
-        #y_in =+ 1e-3 * torch.randn_like(y_in)
         X_in = torch.Tensor(X_in)
         if self.model is None:
             if self.target_dim == 0:
@@ -86,8 +86,6 @@ class GenerativeRegressor(BaseEstimator):
             self.model = ExactGPModel(X_in, y_in, self.lk)
 
             self.model.initialize(**GP_HYPERS)
-            # clip = 0.1
-            # torch.nn.utils.clip_grad_norm(self.model.parameters(), clip)
 
             # Find optimal model hyperparameters
             self.model.train()

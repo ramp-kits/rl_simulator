@@ -1,14 +1,12 @@
 import numpy as np
 
-from sklearn.base import BaseEstimator
+from rampwf.utils import BaseGenerativeRegressor
 
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
 
 from mbrltools.pytorch_utils import train
-
-torch.manual_seed(7)
 
 n_epochs = 300
 LR = 1e-3
@@ -52,7 +50,7 @@ def custom_MSE(y, y_pred):
     return MSE(y, y_pred[:len(y), ])
 
 
-class GenerativeRegressor(BaseEstimator):
+class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
         self.max_dists = max_dists
         self.decomposition = 'autoregressive'
