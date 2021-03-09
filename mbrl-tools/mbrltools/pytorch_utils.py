@@ -34,15 +34,16 @@ def _set_device(disable_cuda=False):
 
 
 def train(model, dataset_train, dataset_valid=None,
-                validation_fraction=None,
-                n_epochs=10, batch_size=128, loss_fn=nn.MSELoss(),
-                optimizer=None, scheduler=None, return_best_model=False,
-                save_model_file=None, disable_cuda=False,
-                batch_size_predict=None, drop_last=False,
-                numpy_random_state=None, is_vae=False, is_nvp=False,
-                is_packed_autoreg=False, val_loss_fn= None, verbose=True,
-                shuffle=True):
+          validation_fraction=None, n_epochs=10, batch_size=128,
+          loss_fn=nn.MSELoss(), optimizer=None, scheduler=None,
+          return_best_model=False, save_model_file=None, disable_cuda=False,
+          batch_size_predict=None, drop_last=False, numpy_random_state=None,
+          is_vae=False, is_nvp=False, is_packed_autoreg=False,
+          val_loss_fn= None, verbose=True, shuffle=True):
     """Training model using the provided dataset and given loss function.
+
+    model : pytorch nn.Module
+        Model to be trained.
 
     dataset_train : Tensor dataset.
         Training data set.
@@ -56,11 +57,29 @@ def train(model, dataset_train, dataset_valid=None,
         use as a validation set. If dataset_valid is not None then
         dataset_valid overrides validation_fraction.
 
+    n_epochs : int
+        Number of epochs
+
+    batch_size : int
+        Batch size.
+
+    loss_fn : function
+        Pytorch loss function.
+
+    optimizer : object
+        Pytorch optimizer
+
+    scheduler : object
+        Pytorch scheduler.
+
     return_best_model : bool
         Whether to return the best model on the validation loss. More exactly,
         if set to True, the model trained at the epoch that lead to the best
         performance on the validation dataset is returned. In this case the
         best validation loss is also returned.
+
+    disable_cuda : bool
+        Whether to use CPU instead of GPU.
 
     batch_size_predict : int
         Batch size to use for the computation of the validation loss
@@ -92,6 +111,12 @@ def train(model, dataset_train, dataset_valid=None,
 
     shuffle : bool
         Whether to drop shuffle the data.
+
+    Returns
+    -------
+    model : pytorch nn.Module
+        Trained model. If return_best_model is set to True the best validation
+        loss is also returned.
 
     """
     # use GPU by default if cuda is available, otherwise use CPU
