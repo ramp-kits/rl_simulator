@@ -180,8 +180,8 @@ def rollout(system_env, n_action_features,
     return trace
 
 
-def train_test_split(data_dir='data', trace_filename='trace.csv',
-                     metadata='metadata.json', min_train_steps=5000):
+def train_test_split(output_dir='data', trace_path='trace.csv',
+                     metadata_path='metadata.json', min_train_steps=5000):
     """Split a trace into a training and test data sets
 
     These data sets will be used by ramp-test when training and testing the
@@ -192,7 +192,7 @@ def train_test_split(data_dir='data', trace_filename='trace.csv',
     ----------
     data_dir : string
         Directory of the trace and where the training and test sets are saved.
-    trace_filename : string
+    trace_path : string
         Name of the trace csv file.
     metadata : string or dict
         Name of the metadata filename or dictionary.
@@ -200,10 +200,8 @@ def train_test_split(data_dir='data', trace_filename='trace.csv',
         Number of episodes to put in the training set. The rest of the episodes
         are put in the test set.
     """
-    metadata = os.path.join(data_dir, metadata)
-    metadata = get_metadata_dictionary(metadata)
+    metadata = get_metadata_dictionary(metadata_path)
 
-    trace_path = os.path.join(data_dir, trace_filename)
     trace_df = read_data_with_metadata(trace_path, metadata)
     trace_df = preprocess_time(trace_df, metadata)
 
@@ -222,5 +220,5 @@ def train_test_split(data_dir='data', trace_filename='trace.csv',
     train_trace_df = trace_df.iloc[:first_test_ind]
     test_trace_df = trace_df.iloc[first_test_ind:]
 
-    train_trace_df.to_csv(os.path.join(data_dir, 'X_train.csv'))
-    test_trace_df.to_csv(os.path.join(data_dir, 'X_test.csv'))
+    train_trace_df.to_csv(os.path.join(output_dir, 'X_train.csv'))
+    test_trace_df.to_csv(os.path.join(output_dir, 'X_test.csv'))

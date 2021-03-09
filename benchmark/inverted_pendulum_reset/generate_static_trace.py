@@ -17,7 +17,8 @@ Env = env.Env
 
 min_steps = 25_000
 trace_filename = 'trace.csv'
-output_path = os.path.join('data', trace_filename)
+output_dir = 'data'
+trace_path = os.path.join(output_dir, trace_filename)
 
 metadata_path = os.path.join('data', 'metadata.json')
 metadata = get_metadata_dictionary(metadata_path)
@@ -37,7 +38,10 @@ env.action_space.np_random.seed(SEED)
 
 trace = rollout(env, len(action_names), epoch=0, min_epoch_steps=min_steps)
 trace_df = pd.DataFrame(data=trace, columns=header)
-trace_df.to_csv(output_path, index=False)
+trace_df.to_csv(trace_path, index=False)
 
-train_test_split(data_dir='data', trace_filename=trace_filename,
-                 metadata='metadata.json', min_train_steps=5000)
+train_test_split(
+    output_dir=output_dir,
+    trace_path=trace_path,
+    metadata_path=os.path.join('data', 'metadata.json'),
+    min_train_steps=5000)
