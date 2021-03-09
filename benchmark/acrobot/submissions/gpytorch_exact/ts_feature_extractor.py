@@ -6,7 +6,7 @@ FEATURE_NAMES = ['theta_dot_2', 'theta_2', 'theta_dot_1', 'theta_1', 'torque',
 
 
 class FeatureExtractor:
-    def __init__(self, restart_name):
+    def __init__(self, restart_name, n_burn_in=0, n_lookahead=1):
         """
         Parameters
         ----------
@@ -14,12 +14,12 @@ class FeatureExtractor:
             The name of the 0/1 column indicating restarts in the time series.
         """
         self.restart_name = restart_name
-        pass
+        self.n_burn_in = n_burn_in
+        self.n_lookahead = n_lookahead
 
-    def transform(self, X_df_raw):
+    def transform(self, X_df):
         """Transform time series into list of states.
-        We use the observables at time t as the state, concatenated to the mean
-        of the last ten time steps, handling restarts.
+        We use the observables at time t as the state.
 
         Be careful not to use any information from the future (X_ds[t + 1:])
         when constructing X_df[t].
@@ -32,8 +32,8 @@ class FeatureExtractor:
         X_df : pandas Dataframe
 
         """
-        X_df = X_df_raw.to_dataframe()
-        changed_df = (X_df.pipe(add_sin_cos))
+        # use copy to avoid SettingWithCopyWarning from pandas
+        changed_df = add_sin_cos(X_df.copy())
         return changed_df[FEATURE_NAMES]
 
 
