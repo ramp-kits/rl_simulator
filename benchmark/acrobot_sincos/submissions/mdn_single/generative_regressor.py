@@ -1,10 +1,10 @@
 import numpy as np
 
-from rampwf.utils import BaseGenerativeRegressor
-
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
+
+from rampwf.utils import BaseGenerativeRegressor
 
 from mbrltools.pytorch_utils import train
 
@@ -20,8 +20,6 @@ VALIDATION_FRACTION = 0.1
 DROP_FIRST = 0
 DROP_REPEATED = 1e-1
 N_GAUSSIANS = 1
-
-MSE = nn.MSELoss()
 
 CONST = np.sqrt(2 * np.pi)
 

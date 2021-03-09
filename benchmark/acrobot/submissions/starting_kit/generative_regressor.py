@@ -1,8 +1,9 @@
 import warnings
 
 import numpy as np
-from rampwf.utils import BaseGenerativeRegressor
 from sklearn.linear_model import LinearRegression
+
+from rampwf.utils import BaseGenerativeRegressor
 
 
 class GenerativeRegressor(BaseGenerativeRegressor):

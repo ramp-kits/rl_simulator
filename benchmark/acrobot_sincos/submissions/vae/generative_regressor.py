@@ -1,23 +1,26 @@
+from sklearn.preprocessing import StandardScaler
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
-from mbrltools.pytorch_utils import train
-from rampwf.utils import BaseGenerativeRegressor
-from sklearn.preprocessing import StandardScaler
 from torch.autograd import Variable
 from torch.nn import functional as F
 
+from rampwf.utils import BaseGenerativeRegressor
+
+from mbrltools.pytorch_utils import train
+
+
 n_epochs = 100
 LR = 1e-3
-NB_LAYERS = 2
+N_LAYERS = 2
 LAYER_SIZE = 60
 BATCH_SIZE = 20
 REPRESENTATION_SIZE = 5
 DECAY = 0
 DROP_REPEATED = 0
 KLD_W = 1
-device = "cpu"
 VAL_SIZE = 0.15
 
 
@@ -35,11 +38,9 @@ class CustomLoss:
 
 class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
-        super().__init__()
-
         self.max_dists = max_dists
-        self.model_index = target_dim
         self.scaler_y = StandardScaler()
+        self.decomposition = None
 
     def fit(self, X_in, y_in):
 
@@ -76,7 +77,6 @@ class GenerativeRegressor(BaseGenerativeRegressor):
 
         with torch.no_grad():
             X = torch.Tensor(X)
-
             y_pred = self.model.sample(X)
 
         y_pred = y_pred * self.scaler_y.scale_ + self.scaler_y.mean_
@@ -97,7 +97,7 @@ class VAE(nn.Module):
         )
 
         self.en = nn.Sequential()
-        for i in range(NB_LAYERS):
+        for i in range(N_LAYERS):
             self.en.add_module(
                 f'layer{i + 1}-lin', nn.Linear(LAYER_SIZE, LAYER_SIZE))
             # self.common_block.add_module(
@@ -115,7 +115,7 @@ class VAE(nn.Module):
         )
 
         self.de = nn.Sequential()
-        for i in range(NB_LAYERS):
+        for i in range(N_LAYERS):
             self.de.add_module(
                 f'layer{i + 1}-lin', nn.Linear(LAYER_SIZE, LAYER_SIZE))
             self.de.add_module(f"layer{i + 1}-act", nn.Tanh())
@@ -125,7 +125,10 @@ class VAE(nn.Module):
         self.de_out = nn.Linear(LAYER_SIZE, input_size)
 
     def encode(self, y, x):
-        """Encode a batch of samples, and return posterior parameters for each point."""
+        """Encode a batch of samples.
+
+        Return posterior parameters for each point.
+        """
         data = torch.cat([y, x], axis=1)
         h = self.en_in(data)
         h = self.en(h)
@@ -139,9 +142,11 @@ class VAE(nn.Module):
         return self.de_out(data)
 
     def reparam(self, mu, logvar):
-        """Reparameterisation trick to sample z values.
-        This is stochastic during training,  and returns the mode during evaluation."""
+        """Reparametrisation trick to sample z values.
 
+        This is stochastic during training, and returns the mode during
+        evaluation.
+        """
         if self.training:
             std = logvar.mul(0.5).exp_()
             eps = Variable(std.data.new(std.size()).normal_())
@@ -150,7 +155,8 @@ class VAE(nn.Module):
             return mu
 
     def forward(self, y, x):
-        """Takes a batch of samples, encodes them, and then decodes them again to compare."""
+        """Takes a batch of samples, encodes them, and then decodes them again.
+        """
         mu, logvar = self.encode(y, x)
         z = self.reparam(mu, logvar)
         return self.decode(z, x), mu, logvar

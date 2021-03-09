@@ -1,11 +1,11 @@
 import numpy as np
 
-
-from rampwf.utils import BaseGenerativeRegressor
 from sklearn.preprocessing import StandardScaler
 
 import torch
 import gpytorch
+
+from rampwf.utils import BaseGenerativeRegressor
 
 torch.manual_seed(7)
 
@@ -27,105 +27,99 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         self.target_dim = target_dim
         self.scaler_y = StandardScaler()
         self.scaler_x = StandardScaler()
-        print(f"Dimension : {target_dim}")
+        print(f"Dimension: {target_dim}")
 
     def fit(self, X_in, y_in):
-
         self.scaler_y.fit(y_in)
         self.scaler_x.fit(X_in)
         X_in = self.scaler_x.transform(X_in)
         y_in = self.scaler_y.transform(y_in)
         y_in = torch.Tensor(y_in).view(-1)
         X_in = torch.Tensor(X_in)
-        if self.model is None:
-            if self.target_dim == 0:
-                noise = 0.000004
-                amplitude = 0.5
-                length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
-                num_epochs = 1
-            if self.target_dim == 1:
-                noise = 0.0001
-                amplitude = 1.0
-                length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
-                num_epochs = 1
-            if self.target_dim == 2:
-                noise = 0.0001
-                amplitude = 2.5
-                length_scales = np.array([1.82, 11.3, 31.83, 6.89, 13.38, 4.23, 2.75, 12.53])
-                num_epochs = 1
-            if self.target_dim == 3:
-                noise = 0.00005
-                amplitude = 2.5
-                length_scales = np.array([1.67, 7.4, 30.73, 6.85, 11.84, 3.33, 2.75, 11.58])
-                num_epochs = 1
-            if self.target_dim == 4:
-                noise = 0.00005
-                amplitude = 1.5
-                length_scales = np.array([1.69, 3.2, 36.56, 11.16, 16.88, 2.97, 4.82, 11.62])
-                num_epochs = 1
-            if self.target_dim == 5:
-                noise = 0.00005
-                amplitude = 2.5
-                length_scales = np.array([2.27, 2.8, 39.75, 14.13, 14.15, 4.03, 4.68, 12.01])
-                num_epochs = 1
+        if self.target_dim == 0:
+            noise = 0.000004
+            amplitude = 0.5
+            length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
+            n_epochs = 1
+        if self.target_dim == 1:
+            noise = 0.0001
+            amplitude = 1.0
+            length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
+            n_epochs = 1
+        if self.target_dim == 2:
+            noise = 0.0001
+            amplitude = 2.5
+            length_scales = np.array([1.82, 11.3, 31.83, 6.89, 13.38, 4.23, 2.75, 12.53])
+            n_epochs = 1
+        if self.target_dim == 3:
+            noise = 0.00005
+            amplitude = 2.5
+            length_scales = np.array([1.67, 7.4, 30.73, 6.85, 11.84, 3.33, 2.75, 11.58])
+            n_epochs = 1
+        if self.target_dim == 4:
+            noise = 0.00005
+            amplitude = 1.5
+            length_scales = np.array([1.69, 3.2, 36.56, 11.16, 16.88, 2.97, 4.82, 11.62])
+            n_epochs = 1
+        if self.target_dim == 5:
+            noise = 0.00005
+            amplitude = 2.5
+            length_scales = np.array([2.27, 2.8, 39.75, 14.13, 14.15, 4.03, 4.68, 12.01])
+            n_epochs = 1
 
-            GP_HYPERS['likelihood.noise_covar.noise'] =\
-                torch.tensor(noise)
-            GP_HYPERS['covar_module.outputscale'] =\
-                torch.tensor(amplitude)
-            GP_HYPERS['covar_module.base_kernel.lengthscale'] =\
-                torch.tensor(length_scales)
-            self.lk = gpytorch.likelihoods.GaussianLikelihood(
-                noise_constraint=gpytorch.constraints.GreaterThan(noise)
+        GP_HYPERS['likelihood.noise_covar.noise'] =\
+            torch.tensor(noise)
+        GP_HYPERS['covar_module.outputscale'] =\
+            torch.tensor(amplitude)
+        GP_HYPERS['covar_module.base_kernel.lengthscale'] =\
+            torch.tensor(length_scales)
+        self.lk = gpytorch.likelihoods.GaussianLikelihood(
+            noise_constraint=gpytorch.constraints.GreaterThan(noise)
+        )
+
+        self.model = ExactGPModel(X_in, y_in, self.lk)
+        self.model.initialize(**GP_HYPERS)
+
+        # Find optimal model hyperparameters
+        self.model.train()
+        self.lk.train()
+
+        # Use the adam optimizer
+        optimizer = torch.optim.Adam([
+            # Includes GaussianLikelihood parameters
+            {'params': self.model.parameters()},
+        ], lr=LR)
+
+        # "Loss" for GPs - the marginal log likelihood
+        mll = gpytorch.mlls.ExactMarginalLogLikelihood(
+            self.lk, self.model)
+
+        for i in range(n_epochs):
+            # Zero gradients from previous iteration
+            optimizer.zero_grad()
+            # Output from model
+            output = self.model(X_in)
+            # Calc loss and backprop gradients
+            loss = -mll(output, y_in).sum()
+            loss.backward()
+            loss.item()
+
+            length_scales = np.array2string(
+                self.model.covar_module.base_kernel.lengthscale.detach()
+                .numpy(),
+                precision=2)
+            print(
+                f"Iter {i + 1}/{n_epochs} - Loss: {loss.item():.3f}"
+                " - noise : "
+                f"{self.model.likelihood.noise_covar.noise.item():.6f}"
+                f" - lengthscale : {length_scales}"
+                " - outputscale : "
+                f"{self.model.covar_module.outputscale.item():.3f}"
             )
 
-            self.model = ExactGPModel(X_in, y_in, self.lk)
-
-            self.model.initialize(**GP_HYPERS)
-            # clip = 0.1
-            # torch.nn.utils.clip_grad_norm(self.model.parameters(), clip)
-
-            # Find optimal model hyperparameters
-            self.model.train()
-            self.lk.train()
-
-            # Use the adam optimizer
-            optimizer = torch.optim.Adam([
-                # Includes GaussianLikelihood parameters
-                {'params': self.model.parameters()},
-            ], lr=LR)
-
-            # "Loss" for GPs - the marginal log likelihood
-            mll = gpytorch.mlls.ExactMarginalLogLikelihood(
-                self.lk, self.model)
-
-            for i in range(num_epochs):
-                # Zero gradients from previous iteration
-                optimizer.zero_grad()
-                # Output from model
-                output = self.model(X_in)
-                # Calc loss and backprop gradients
-                loss = -mll(output, y_in).sum()
-                loss.backward()
-                loss.item()
-
-                length_scales = np.array2string(
-                    self.model.covar_module.base_kernel.lengthscale.detach()
-                    .numpy(),
-                    precision=2)
-                print(
-                    f"Iter {i + 1}/{num_epochs} - Loss: {loss.item():.3f}"
-                    " - noise : "
-                    f"{self.model.likelihood.noise_covar.noise.item():.6f}"
-                    f" - lengthscale : {length_scales}"
-                    " - outputscale : "
-                    f"{self.model.covar_module.outputscale.item():.3f}"
-                )
-
-                optimizer.step()
+            optimizer.step()
 
     def predict(self, X):
-        self.model.eval()
 
         X = self.scaler_x.transform(X)
         X_in = torch.Tensor(X)

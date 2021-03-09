@@ -1,12 +1,14 @@
 import numpy as np
 
-from rampwf.utils import BaseGenerativeRegressor
-
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
 
+from rampwf.utils import BaseGenerativeRegressor
+
 from mbrltools.pytorch_utils import train
+
+torch.manual_seed(7)
 
 n_epochs = 300
 LR = 1e-3
@@ -18,8 +20,6 @@ VALIDATION_FRACTION = 0.1
 DROP_FIRST = 0
 DROP_REPEATED = 1e-1
 N_GAUSSIANS = 1
-
-MSE = nn.MSELoss()
 
 CONST = np.sqrt(2 * np.pi)
 
@@ -44,10 +44,6 @@ class CustomLoss:
         nll = -torch.log(summed_prob)
         nll = torch.mean(nll)
         return nll
-
-
-def custom_MSE(y, y_pred):
-    return MSE(y, y_pred[:len(y), ])
 
 
 class GenerativeRegressor(BaseGenerativeRegressor):

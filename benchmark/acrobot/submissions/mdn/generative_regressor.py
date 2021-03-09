@@ -1,11 +1,10 @@
 import numpy as np
 
-from rampwf.utils import BaseGenerativeRegressor
-
-
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
+
+from rampwf.utils import BaseGenerativeRegressor
 
 from mbrltools.pytorch_utils import train
 
@@ -55,7 +54,7 @@ class CustomLoss:
 
 
 class GenerativeRegressor(BaseGenerativeRegressor):
-    def __init__(self, max_dists):
+    def __init__(self, max_dists, target_dim):
         self.max_dists = max_dists
         self.decomposition = None
 

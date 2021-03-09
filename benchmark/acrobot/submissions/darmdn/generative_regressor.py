@@ -1,12 +1,14 @@
 import numpy as np
 
-from rampwf.utils import BaseGenerativeRegressor
-
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
 
+from rampwf.utils import BaseGenerativeRegressor
+
 from mbrltools.pytorch_utils import train
+
+torch.manual_seed(7)
 
 n_epochs = 300
 LR = 1e-3

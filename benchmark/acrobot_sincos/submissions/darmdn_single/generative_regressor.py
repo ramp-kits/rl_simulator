@@ -1,10 +1,10 @@
 import numpy as np
 
-from rampwf.utils import BaseGenerativeRegressor
-
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
+
+from rampwf.utils import BaseGenerativeRegressor
 
 from mbrltools.pytorch_utils import train
 
@@ -20,8 +20,6 @@ VALIDATION_FRACTION = 0.1
 DROP_FIRST = 0
 DROP_REPEATED = 1e-1
 N_GAUSSIANS = 1
-
-MSE = nn.MSELoss()
 
 CONST = np.sqrt(2 * np.pi)
 
@@ -48,10 +46,6 @@ class CustomLoss:
         return nll
 
 
-def custom_MSE(y, y_pred):
-    return MSE(y, y_pred[:len(y), ])
-
-
 class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
         self.max_dists = max_dists
@@ -59,23 +53,22 @@ class GenerativeRegressor(BaseGenerativeRegressor):
 
     def fit(self, X_in, y_in):
 
-        if self.model is None:
-            self.model = SimpleBinnedNoBounds(N_GAUSSIANS, X_in.shape[1])
+        self.model = SimpleBinnedNoBounds(N_GAUSSIANS, X_in.shape[1])
 
-            dataset = torch.utils.data.TensorDataset(
-                torch.Tensor(X_in), torch.Tensor(y_in))
-            optimizer = optim.Adam(
-                self.model.parameters(), lr=LR, amsgrad=True)
-            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, 'min', factor=0.1, patience=20, cooldown=20,
-                min_lr=1e-7, verbose=True)
+        dataset = torch.utils.data.TensorDataset(
+            torch.Tensor(X_in), torch.Tensor(y_in))
+        optimizer = optim.Adam(
+            self.model.parameters(), lr=LR, amsgrad=True)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, 'min', factor=0.1, patience=20, cooldown=20,
+            min_lr=1e-7, verbose=True)
 
-            loss = CustomLoss()
-            self.model, _ = train(
-                self.model, dataset, validation_fraction=VALIDATION_FRACTION,
-                optimizer=optimizer, scheduler=scheduler,
-                n_epochs=n_epochs, batch_size=BATCH_SIZE, loss_fn=loss,
-                return_best_model=True, disable_cuda=True, drop_last=True)
+        loss = CustomLoss()
+        self.model, _ = train(
+            self.model, dataset, validation_fraction=VALIDATION_FRACTION,
+            optimizer=optimizer, scheduler=scheduler,
+            n_epochs=n_epochs, batch_size=BATCH_SIZE, loss_fn=loss,
+            return_best_model=True, disable_cuda=True, drop_last=True)
 
     def predict(self, X):
         # we use predict sequentially in RL and there is no need to compute

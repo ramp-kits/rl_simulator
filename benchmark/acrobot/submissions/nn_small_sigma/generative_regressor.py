@@ -1,8 +1,10 @@
 import numpy as np
-from rampwf.utils import BaseGenerativeRegressor
+
 import torch
 import torch.optim as optim
 import torch.nn as nn
+
+from rampwf.utils import BaseGenerativeRegressor
 
 from mbrltools.pytorch_utils import train
 

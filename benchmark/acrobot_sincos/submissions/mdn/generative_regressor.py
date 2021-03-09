@@ -1,10 +1,10 @@
 import numpy as np
 
-from rampwf.utils import BaseGenerativeRegressor
-
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
+
+from rampwf.utils import BaseGenerativeRegressor
 
 from mbrltools.pytorch_utils import train
 
@@ -60,24 +60,21 @@ class GenerativeRegressor(BaseGenerativeRegressor):
 
     def fit(self, X_in, y_in):
 
-        if self.model is None:
-            self.model = SimpleBinnedNoBounds(N_GAUSSIANS, X_in.shape[1],
-                                              y_in.shape[1])
-            dataset = torch.utils.data.TensorDataset(
-                torch.Tensor(X_in), torch.Tensor(y_in))
-            optimizer = optim.Adam(
-                self.model.parameters(), lr=LR, amsgrad=True)
-            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, 'min', factor=0.1, patience=30, cooldown=20,
-                min_lr=1e-7, verbose=True)
-            loss = CustomLoss()
-            self.model, _ = train(
-                self.model, dataset, validation_fraction=VALIDATION_FRACTION,
-                optimizer=optimizer, scheduler=scheduler,
-                n_epochs=n_epochs, batch_size=BATCH_SIZE, loss_fn=loss,
-                return_best_model=True, disable_cuda=True
-
-                )
+        self.model = SimpleBinnedNoBounds(N_GAUSSIANS, X_in.shape[1],
+                                            y_in.shape[1])
+        dataset = torch.utils.data.TensorDataset(
+            torch.Tensor(X_in), torch.Tensor(y_in))
+        optimizer = optim.Adam(
+            self.model.parameters(), lr=LR, amsgrad=True)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, 'min', factor=0.1, patience=30, cooldown=20,
+            min_lr=1e-7, verbose=True)
+        loss = CustomLoss()
+        self.model, _ = train(
+            self.model, dataset, validation_fraction=VALIDATION_FRACTION,
+            optimizer=optimizer, scheduler=scheduler,
+            n_epochs=n_epochs, batch_size=BATCH_SIZE, loss_fn=loss,
+            return_best_model=True, disable_cuda=True)
 
     def predict(self, X):
         # we use predict sequentially in RL and there is no need to compute

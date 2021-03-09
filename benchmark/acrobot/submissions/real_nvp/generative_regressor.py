@@ -1,13 +1,16 @@
 import math
 
+from sklearn.preprocessing import StandardScaler
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
-from mbrltools.pytorch_utils import train
-from rampwf.utils import BaseGenerativeRegressor
-from sklearn.preprocessing import StandardScaler
 from torch.autograd import Variable
+
+from rampwf.utils import BaseGenerativeRegressor
+
+from mbrltools.pytorch_utils import train
 
 n_epochs = 200
 LR = 5e-3
@@ -16,17 +19,14 @@ BATCH_SIZE = 50
 DECAY = 1e-3
 device = "cpu"
 VAL_SIZE = 0.15
-
-NUM_BLOCKS = 3
+N_BLOCKS = 3
 
 
 class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
         self.max_dists = max_dists
-        self.model_index = target_dim
         self.scaler_y = StandardScaler()
         self.decomposition = None
-        super().__init__()
 
     def fit(self, X_in, y_in):
 
@@ -38,7 +38,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         mask = torch.arange(0, y_in.shape[1]) % 2
         mask = mask.to(device).float()
         modules = []
-        for _ in range(NUM_BLOCKS):
+        for _ in range(N_BLOCKS):
             modules += [
                 CouplingLayer(
                     y_in.shape[1], LAYER_SIZE, mask, X_in.shape[1],
@@ -83,8 +83,9 @@ class GenerativeRegressor(BaseGenerativeRegressor):
 
 
 class CouplingLayer(nn.Module):
-    """ An implementation of a coupling layer
-    from RealNVP (https://arxiv.org/abs/1605.08803).
+    """An implementation of a coupling layer from RealNVP.
+
+    Original paper https://arxiv.org/abs/1605.08803.
     """
 
     def __init__(self,
@@ -142,9 +143,9 @@ class CouplingLayer(nn.Module):
 
 
 class BatchNormFlow(nn.Module):
-    """ An implementation of a batch normalization layer from
-    Density estimation using Real NVP
-    (https://arxiv.org/abs/1605.08803).
+    """An implementation of a batch normalization layer.
+
+    From density estimation using Real NVP (https://arxiv.org/abs/1605.08803).
     """
 
     def __init__(self, num_inputs, momentum=0.0, eps=1e-5):
@@ -162,8 +163,8 @@ class BatchNormFlow(nn.Module):
         if mode == 'direct':
             if self.training:
                 self.batch_mean = inputs.mean(0)
-                self.batch_var = (
-                                         inputs - self.batch_mean).pow(2).mean(0) + self.eps
+                self.batch_var = (inputs - self.batch_mean).pow(2).mean(0)
+                self.batch_var += self.eps
 
                 self.running_mean.mul_(self.momentum)
                 self.running_var.mul_(self.momentum)
@@ -200,7 +201,8 @@ class BatchNormFlow(nn.Module):
 
 
 class FlowSequential(nn.Sequential):
-    """ A sequential container for flows.
+    """A sequential container for flows.
+
     In addition to a forward pass it implements a backward pass and
     computes log jacobians.
     """
@@ -236,7 +238,8 @@ class FlowSequential(nn.Sequential):
 
     def sample(self, num_samples=None, noise=None, cond_inputs=None):
         if noise is None:
-            noise = Variable(torch.Tensor(num_samples, self.num_inputs).normal_())
+            noise = Variable(torch.Tensor(num_samples, self.num_inputs)
+                             .normal_())
         device = next(self.parameters()).device
         noise = noise.to(device)
         if cond_inputs is not None:

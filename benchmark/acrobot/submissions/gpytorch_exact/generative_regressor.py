@@ -1,17 +1,18 @@
 import numpy as np
 
-from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler
 
 import torch
 import gpytorch
 
+from rampwf.utils import BaseGenerativeRegressor
+
 torch.manual_seed(7)
 
-n_epochs = 100
 LR = 1e-1
-
 N_GAUSSIANS = 1
+
+torch.set_default_tensor_type(torch.DoubleTensor)
 
 GP_HYPERS = {
     'likelihood.noise_covar.noise': torch.tensor(0.01),
@@ -19,14 +20,13 @@ GP_HYPERS = {
 }
 
 
-class GenerativeRegressor(BaseEstimator):
-    def __init__(self, max_dists, model_index):
-        self.model = None
+class GenerativeRegressor(BaseGenerativeRegressor):
+    def __init__(self, max_dists, target_dim):
         self.max_dists = max_dists
-        self.model_index = model_index
+        self.target_dim = target_dim
         self.scaler_y = StandardScaler()
         self.scaler_x = StandardScaler()
-        print(f"Experiment number : {model_index}")
+        print(f"Dimension: {target_dim}")
 
     def fit(self, X_in, y_in):
         self.scaler_y.fit(y_in)
@@ -35,88 +35,84 @@ class GenerativeRegressor(BaseEstimator):
         y_in = self.scaler_y.transform(y_in)
         y_in = torch.Tensor(y_in).view(-1)
         X_in = torch.Tensor(X_in)
-        if self.model is None:
-            if self.model_index == 0:
-                noise = 0.01
-                amplitude = 0.5
-                length_scales = 6 * np.ones(X_in.shape[1])
-                length_scales[-1] = 0.9
-                n_epochs = 50
-            if self.model_index == 1:
-                noise = 0.01
-                amplitude = 0.5
-                length_scales = 6 * np.ones(X_in.shape[1])
-                length_scales[-1] = 0.9
-                n_epochs = 50
-            if self.model_index == 2:
-                noise = 0.01
-                amplitude = 0.5
-                length_scales = 6 * np.ones(X_in.shape[1])
-                length_scales[-1] = 0.9
-                n_epochs = 50
-            if self.model_index == 3:
-                noise = 0.01
-                amplitude = 0.5
-                length_scales = 6 * np.ones(X_in.shape[1])
-                length_scales[-1] = 0.9
-                n_epochs = 50
+        if self.target_dim == 0:
+            noise = 0.01
+            amplitude = 0.5
+            length_scales = 6 * np.ones(X_in.shape[1])
+            length_scales[-1] = 0.9
+            n_epochs = 50
+        if self.target_dim == 1:
+            noise = 0.01
+            amplitude = 0.5
+            length_scales = 6 * np.ones(X_in.shape[1])
+            length_scales[-1] = 0.9
+            n_epochs = 50
+        if self.target_dim == 2:
+            noise = 0.01
+            amplitude = 0.5
+            length_scales = 6 * np.ones(X_in.shape[1])
+            length_scales[-1] = 0.9
+            n_epochs = 50
+        if self.target_dim == 3:
+            noise = 0.01
+            amplitude = 0.5
+            length_scales = 6 * np.ones(X_in.shape[1])
+            length_scales[-1] = 0.9
+            n_epochs = 50
 
-            GP_HYPERS['likelihood.noise_covar.noise'] =\
-                torch.tensor(noise)
-            GP_HYPERS['covar_module.outputscale'] =\
-                torch.tensor(amplitude)
-            GP_HYPERS['covar_module.base_kernel.lengthscale'] =\
-                torch.tensor(length_scales)
-            self.lk = gpytorch.likelihoods.GaussianLikelihood(
-                noise_constraint=gpytorch.constraints.GreaterThan(noise))
+        GP_HYPERS['likelihood.noise_covar.noise'] =\
+            torch.tensor(noise)
+        GP_HYPERS['covar_module.outputscale'] =\
+            torch.tensor(amplitude)
+        GP_HYPERS['covar_module.base_kernel.lengthscale'] =\
+            torch.tensor(length_scales)
+        self.lk = gpytorch.likelihoods.GaussianLikelihood(
+            noise_constraint=gpytorch.constraints.GreaterThan(noise))
 
-            self.model = ExactGPModel(X_in, y_in, self.lk)
+        self.model = ExactGPModel(X_in, y_in, self.lk)
+        self.model.initialize(**GP_HYPERS)
 
-            self.model.initialize(**GP_HYPERS)
-            # clip = 0.1
-            # torch.nn.utils.clip_grad_norm(self.model.parameters(), clip)
+        # Find optimal model hyperparameters
+        self.model.train()
+        self.lk.train()
 
-            # Find optimal model hyperparameters
-            self.model.train()
-            self.lk.train()
+        # Use the adam optimizer
+        optimizer = torch.optim.Adam([
+            # Includes GaussianLikelihood parameters
+            {'params': self.model.parameters()},
+        ], lr=LR)
 
-            # Use the adam optimizer
-            optimizer = torch.optim.Adam([
-                # Includes GaussianLikelihood parameters
-                {'params': self.model.parameters()},
-            ], lr=LR)
+        # "Loss" for GPs - the marginal log likelihood
+        mll = gpytorch.mlls.ExactMarginalLogLikelihood(
+            self.lk, self.model)
 
-            # "Loss" for GPs - the marginal log likelihood
-            mll = gpytorch.mlls.ExactMarginalLogLikelihood(
-                self.lk, self.model)
+        for i in range(n_epochs):
+            # Zero gradients from previous iteration
+            optimizer.zero_grad()
+            # Output from model
+            output = self.model(X_in)
+            # Calc loss and backprop gradients
+            loss = -mll(output, y_in).sum()
+            loss.backward()
+            loss.item()
 
-            for i in range(n_epochs):
-                # Zero gradients from previous iteration
-                optimizer.zero_grad()
-                # Output from model
-                output = self.model(X_in)
-                # Calc loss and backprop gradients
-                loss = -mll(output, y_in).sum()
-                loss.backward()
-                loss.item()
+            length_scales = np.array2string(
+                self.model.covar_module.base_kernel.lengthscale.detach()
+                .numpy(),
+                precision=2)
+            print(
+                f"Iter {i + 1}/{n_epochs} - Loss: {loss.item():.3f}"
+                " - noise : "
+                f"{self.model.likelihood.noise_covar.noise.item():.6f}"
+                f" - lengthscale : {length_scales}"
+                " - outputscale : "
+                f"{self.model.covar_module.outputscale.item():.3f}"
+            )
 
-                length_scales = np.array2string(
-                    self.model.covar_module.base_kernel.lengthscale.detach()
-                    .numpy(),
-                    precision=2)
-                print(
-                    f"Iter {i + 1}/{n_epochs} - Loss: {loss.item():.3f}"
-                    " - noise : "
-                    f"{self.model.likelihood.noise_covar.noise.item():.6f}"
-                    f" - lengthscale : {length_scales}"
-                    " - outputscale : "
-                    f"{self.model.covar_module.outputscale.item():.3f}"
-                )
-
-                optimizer.step()
+            optimizer.step()
 
     def predict(self, X):
-        self.model.eval()
+
         X = self.scaler_x.transform(X)
         X_in = torch.Tensor(X)
 

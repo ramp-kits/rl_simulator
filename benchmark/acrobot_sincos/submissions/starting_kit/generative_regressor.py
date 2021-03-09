@@ -1,9 +1,9 @@
 import warnings
 
-from rampwf.utils import BaseGenerativeRegressor
-
 import numpy as np
 from sklearn.linear_model import LinearRegression
+
+from rampwf.utils import BaseGenerativeRegressor
 
 
 class GenerativeRegressor(BaseGenerativeRegressor):
@@ -62,10 +62,11 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         params : np.array of float tuples
             parameters for each component in the mixture
         """
-        types = ['norm']  # Gaussian
+        n_samples = X_array.shape[0]
+        types = ['norm']  # Gaussians
         y_pred = self.reg.predict(X_array)  # means
-        sigmas = np.array([self.sigma] * len(X_array))  # constant sigma
-        sigmas = sigmas[:, np.newaxis]
+        # constant sigma for all x in X_array
+        sigmas = np.full(shape=(n_samples, 1), fill_value=self.sigma)
         params = np.concatenate((y_pred, sigmas), axis=1)
-        weights = np.array([[1.0], ] * len(X_array))
+        weights = np.ones((n_samples, 1))
         return weights, types, params
