@@ -22,7 +22,6 @@ GP_HYPERS = {
 
 class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
-        self.model = None
         self.max_dists = max_dists
         self.target_dim = target_dim
         self.scaler_y = StandardScaler()
@@ -39,32 +38,38 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         if self.target_dim == 0:
             noise = 0.000004
             amplitude = 0.5
-            length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
+            length_scales = np.array(
+                [2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
             n_epochs = 1
         if self.target_dim == 1:
             noise = 0.0001
             amplitude = 1.0
-            length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
+            length_scales = np.array(
+                [2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
             n_epochs = 1
         if self.target_dim == 2:
             noise = 0.0001
             amplitude = 2.5
-            length_scales = np.array([1.82, 11.3, 31.83, 6.89, 13.38, 4.23, 2.75, 12.53])
+            length_scales = np.array(
+                [1.82, 11.3, 31.83, 6.89, 13.38, 4.23, 2.75, 12.53])
             n_epochs = 1
         if self.target_dim == 3:
             noise = 0.00005
             amplitude = 2.5
-            length_scales = np.array([1.67, 7.4, 30.73, 6.85, 11.84, 3.33, 2.75, 11.58])
+            length_scales = np.array(
+                [1.67, 7.4, 30.73, 6.85, 11.84, 3.33, 2.75, 11.58])
             n_epochs = 1
         if self.target_dim == 4:
             noise = 0.00005
             amplitude = 1.5
-            length_scales = np.array([1.69, 3.2, 36.56, 11.16, 16.88, 2.97, 4.82, 11.62])
+            length_scales = np.array(
+                [1.69, 3.2, 36.56, 11.16, 16.88, 2.97, 4.82, 11.62])
             n_epochs = 1
         if self.target_dim == 5:
             noise = 0.00005
             amplitude = 2.5
-            length_scales = np.array([2.27, 2.8, 39.75, 14.13, 14.15, 4.03, 4.68, 12.01])
+            length_scales = np.array(
+                [2.27, 2.8, 39.75, 14.13, 14.15, 4.03, 4.68, 12.01])
             n_epochs = 1
 
         GP_HYPERS['likelihood.noise_covar.noise'] =\
@@ -123,6 +128,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
 
         X = self.scaler_x.transform(X)
         X_in = torch.Tensor(X)
+        n_samples = len(X_in)
 
         # Get into evaluation (predictive posterior) mode
         self.model.eval()
@@ -133,27 +139,22 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             observed_pred = self.lk(self.model(X_in))
 
-        mus = observed_pred.mean.view(-1, 1).detach().numpy(
-            )[:len(X_in), :]
-        sigmas = observed_pred.variance.view(-1, 1).detach().numpy(
-            )[:len(X_in), :]
+        mus = observed_pred.mean.view(-1, 1).detach().numpy()[:n_samples, :]
+        sigmas = observed_pred.variance.view(-1, 1).detach().numpy()
+        sigmas = sigmas[:n_samples, :]
         sigmas = np.sqrt(sigmas)
 
         mus = mus * self.scaler_y.scale_ + self.scaler_y.mean_
         sigmas *= self.scaler_y.scale_
         sigmas = np.abs(sigmas)
 
-        weights = np.ones((len(X_in), 1))
+        weights = np.ones((n_samples, 1))
 
         # We put each mu next to its sigma
-        params = np.empty((len(X_in), N_GAUSSIANS * 2))
+        params = np.empty((n_samples, N_GAUSSIANS * 2))
         params[:, 0::2] = mus
         params[:, 1::2] = sigmas
-
-        # The last generative regressors is uniform,
-        # the others are gaussians
-        types = np.zeros(N_GAUSSIANS)
-        types = np.array([types] * len(X_in))
+        types = ['norm'] * N_GAUSSIANS
 
         return weights, types, params
 

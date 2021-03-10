@@ -126,9 +126,9 @@ class GenerativeRegressor(BaseGenerativeRegressor):
 
     def predict(self, X):
 
-        X = np.array(X)
         X = self.scaler_x.transform(X)
         X_in = torch.Tensor(X)
+        n_samples = len(X_in)
 
         # Get into evaluation (predictive posterior) mode
         self.model.eval()
@@ -139,27 +139,22 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             observed_pred = self.lk(self.model(X_in))
 
-        mus = observed_pred.mean.view(-1, 1).detach().numpy()[:len(X_in), :]
+        mus = observed_pred.mean.view(-1, 1).detach().numpy()[:n_samples, :]
         sigmas = observed_pred.variance.view(-1, 1).detach().numpy()
-        sigmas = sigmas[:len(X_in), :]
-
+        sigmas = sigmas[:n_samples, :]
         sigmas = np.sqrt(sigmas)
 
         mus = mus * self.scaler_y.scale_ + self.scaler_y.mean_
         sigmas *= self.scaler_y.scale_
         sigmas = np.abs(sigmas)
 
-        weights = np.ones((len(X_in), 1))
+        weights = np.ones((n_samples, 1))
 
         # We put each mu next to its sigma
-        params = np.empty((len(X_in), N_GAUSSIANS * 2))
+        params = np.empty((n_samples, N_GAUSSIANS * 2))
         params[:, 0::2] = mus
         params[:, 1::2] = sigmas
-
-        # The last generative regressors is uniform,
-        # the others are gaussians
-        types = np.zeros(N_GAUSSIANS)
-        types = np.array([types] * len(X_in))
+        types = ['norm'] * N_GAUSSIANS
 
         return weights, types, params
 
