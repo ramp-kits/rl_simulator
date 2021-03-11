@@ -201,8 +201,8 @@ def train(model, dataset_train, dataset_valid=None,
             if not is_nvp:
                 y_valid_pred = predict(model, X_valid,
                                        batch_size=batch_size_predict,
-                                       disable_cuda=disable_cuda, verbose=0,
-                                       is_vae=is_vae, shuffle=shuffle)
+                                       disable_cuda=disable_cuda,
+                                       verbose=False, is_vae=is_vae)
                 if is_vae:
                     y_valid_pred = [
                         y_valid_pred, *model.encode(y_valid, X_valid)]
@@ -244,8 +244,8 @@ def train(model, dataset_train, dataset_valid=None,
             best_model = model
             y_valid_pred = predict(best_model, X_valid,
                                    batch_size=batch_size_predict,
-                                   disable_cuda=disable_cuda, verbose=0,
-                                   shuffle=shuffle)
+                                   disable_cuda=disable_cuda, verbose=False,
+                                   is_vae=is_vae)
             if is_vae:
                 y_valid_pred = [y_valid_pred, model.encode(y_valid, X_valid)]
             best_val_loss = val_loss_fn(y_valid, y_valid_pred).item()
