@@ -21,8 +21,6 @@ DROP_FIRST = 0
 DROP_REPEATED = 1e-1
 N_GAUSSIANS = 10
 
-MSE = nn.MSELoss()
-
 CONST = np.sqrt(2 * np.pi)
 
 
@@ -96,8 +94,6 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         params = np.empty((n_samples, mus.shape[1] * mus.shape[2] * 2))
         params[:, 0::2] = mus.reshape(n_samples, -1)
         params[:, 1::2] = sigmas.reshape(n_samples, -1)
-
-        # gaussian has type 0
         types = ['norm'] * N_GAUSSIANS * mus.shape[1]
 
         return weights.reshape(n_samples, -1), types, params

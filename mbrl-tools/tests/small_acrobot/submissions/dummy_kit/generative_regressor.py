@@ -1,9 +1,11 @@
 import numpy as np
 
+from rampwf.utils import BaseGenerativeRegressor
 
-class GenerativeRegressor():
+
+class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
-        pass
+        self.decomposition = 'autoregressive'
 
     def fit(self, X_array, y_array):
         pass
