@@ -39,7 +39,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, 'min', factor=0.1, patience=30, verbose=True)
 
-        train(
+        self.model, _ = train(
             self.model, dataset, validation_fraction=validation_fraction,
             return_best_model=True, optimizer=optimizer,
             scheduler=scheduler, n_epochs=n_epochs, batch_size=batch_size,
