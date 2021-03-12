@@ -15,7 +15,7 @@ N_GAUSSIANS = 1
 torch.set_default_tensor_type(torch.DoubleTensor)
 
 GP_HYPERS = {
-    'likelihood.noise_covar.noise' : torch.tensor(0.01),
+    'likelihood.noise_covar.noise': torch.tensor(0.01),
     'base_covar_module.outputscale': torch.tensor(1.0),
 }
 
