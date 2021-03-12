@@ -23,7 +23,7 @@ GP_HYPERS = {
 class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
         self.max_dists = max_dists
-        self.model_index = target_dim
+        self.target_dim = target_dim
         self.decomposition = 'autoregressive'
         self.scaler_y = StandardScaler()
         self.scaler_x = StandardScaler()
@@ -35,39 +35,44 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         X_in = self.scaler_x.transform(X_in)
         y_in = self.scaler_y.transform(y_in)
         y_in = torch.Tensor(y_in).view(-1)
-
         X_in = torch.Tensor(X_in)
 
-        if self.model_index == 0:
+        if self.target_dim == 0:
             noise = 0.000004
             amplitude = 0.5
-            length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01])
-            num_epochs = 50
-        if self.model_index == 1:
+            length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39,
+                                      5.01])
+            n_epochs = 50
+        if self.target_dim == 1:
             noise = 0.0001
             amplitude = 1.0
-            length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39, 5.01, 11.13])
-            num_epochs = 50
-        if self.model_index == 2:
+            length_scales = np.array([2.78, 2.86, 21.48, 8.26, 4.1, 15.39,
+                                      5.01, 11.13])
+            n_epochs = 50
+        if self.target_dim == 2:
             noise = 0.0001
             amplitude = 2.5
-            length_scales = np.array([1.82, 11.3, 31.83, 6.89, 13.38, 4.23, 2.75, 12.53, 1.])
-            num_epochs = 50
-        if self.model_index == 3:
+            length_scales = np.array([1.82, 11.3, 31.83, 6.89, 13.38, 4.23,
+                                      2.75, 12.53, 1.])
+            n_epochs = 50
+        if self.target_dim == 3:
             noise = 0.00005
             amplitude = 2.5
-            length_scales = np.array([1.67, 7.4, 30.73, 6.85, 11.84, 3.33, 2.75, 11.58, 1., 1.])
-            num_epochs = 50
-        if self.model_index == 4:
+            length_scales = np.array([1.67, 7.4, 30.73, 6.85, 11.84, 3.33,
+                                      2.75, 11.58, 1., 1.])
+            n_epochs = 50
+        if self.target_dim == 4:
             noise = 0.00005
             amplitude = 1.5
-            length_scales = np.array([1.69, 3.2, 36.56, 11.16, 16.88, 2.97, 4.82, 11.62, 1., 1., 1.])
-            num_epochs = 50
-        if self.model_index == 5:
+            length_scales = np.array([1.69, 3.2, 36.56, 11.16, 16.88, 2.97,
+                                      4.82, 11.62, 1., 1., 1.])
+            n_epochs = 50
+        if self.target_dim == 5:
             noise = 0.00005
             amplitude = 2.5
-            length_scales = np.array([2.27, 2.8, 39.75, 14.13, 14.15, 4.03, 4.68, 12.01, 1., 1., 1., 1.])
-            num_epochs = 50
+            length_scales = np.array([2.27, 2.8, 39.75, 14.13, 14.15, 4.03,
+                                      4.68, 12.01, 1., 1., 1., 1.])
+            n_epochs = 50
 
         GP_HYPERS['likelihood.noise_covar.noise'] =\
             torch.tensor(noise)
@@ -85,11 +90,12 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         self.lk.train()
         # Use the adam optimizer
         optimizer = torch.optim.Adam([
-            {'params': self.model.parameters()},  # Includes GaussianLikelihood parameters
+            {'params': self.model.parameters()},
+            # Includes GaussianLikelihood parameters
         ], lr=LR)
         # "Loss" for GPs - the marginal log likelihood
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.lk, self.model)
-        for i in range(num_epochs):
+        for i in range(n_epochs):
             # Zero gradients from previous iteration
             optimizer.zero_grad()
             # Output from model
@@ -102,7 +108,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
                 self.model.base_covar_module.base_kernel.lengthscale
                 .detach().numpy(),
                 precision=2)
-            print(f"Iter {i + 1}/{num_epochs} - Loss: {loss.item():.3f}"
+            print(f"Iter {i + 1}/{n_epochs} - Loss: {loss.item():.3f}"
                   " - noise : "
                   f"{self.model.likelihood.noise_covar.noise.item():.3f}"
                   f" - lengthscale : {lscales}"
