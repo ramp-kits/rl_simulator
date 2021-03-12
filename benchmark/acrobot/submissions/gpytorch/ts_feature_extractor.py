@@ -19,7 +19,7 @@ class FeatureExtractor:
 
     def transform(self, X_df):
         """Transform time series into list of states.
-        We use the observables at time t as the state.
+        We use the observables at time t as the state
 
         Be careful not to use any information from the future (X_ds[t + 1:])
         when constructing X_df[t].
