@@ -11,7 +11,7 @@ from mbrltools.pytorch_utils import train
 torch.manual_seed(7)
 
 n_epochs = 300
-LR = 5e-4
+LR = 1e-3
 N_LAYERS_COMMON = 2
 LAYER_SIZE = 200
 BATCH_SIZE = 50
