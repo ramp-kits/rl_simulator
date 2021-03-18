@@ -1,0 +1,21 @@
+name: mbrl
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - numpy=1.20.*
+  - python=3.8
+  - joblib=1.0.*
+  - cloudpickle=1.6.*
+  - pandas=1.2.*
+  - scipy=1.6.*
+  - xarray=0.17.*
+  - click=7.1.*
+  - scikit-learn=0.24.*
+  - dill=0.3.*
+  - gym=0.18.*
+  - torchvision=0.8.*
+  - pytorch=1.7.*
+  - cpuonly=1.0
+  - gpytorch=1.4.*
+
