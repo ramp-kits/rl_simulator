@@ -154,7 +154,8 @@ def model_based_rl(agent_name, submission,
 @click.option("--initial-trace", default=False, show_default=True,
               type=click.BOOL, help="Whether an initial trace is available. "
               "If True, the initial trace should be stored under trace.csv in "
-              "output/<submission>/<agent_name>/seed_<seed>/epoch_0/.")
+              "submissions/<submission>/mbrl_outputs/<agent_name>/seed_<seed>/"
+              "epoch_0/.")
 @click.option("--seed", default=0, show_default=True,
               help="Seed of the random number generator. Only the numpy and "
               "pytorch global random generators are seeded.")
