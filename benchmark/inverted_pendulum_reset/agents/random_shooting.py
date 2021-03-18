@@ -9,7 +9,7 @@ from sklearn.utils.validation import check_random_state
 N_PARTICLES = 5
 N_ACTION_SEQUENCES = 100
 PLANNING_HORIZON = 1
-N_JOBS = 10
+N_JOBS = 8
 
 N_ACTIONS = 1
 
