@@ -43,26 +43,26 @@ class GenerativeRegressor(BaseGenerativeRegressor):
 
         X_in = torch.Tensor(X_in)
         if self.target_dim == 0:
-            noise = 0.001
+            noise = 0.0001
             amplitude = 1.
             length_scales = np.array([6.72, 7.63, 0.63, 1.0, 10.36, 3.63, 0.5,
                                       7.34, 7.14])
             n_epochs = 10
         if self.target_dim == 1:
-            noise = 0.001
+            noise = 0.0001
             amplitude = 0.7
             length_scales = np.array([0.58, 1.69, 4.95, 7.34, 16.49, 10.42,
                                       3.72, 0.6, 0.66,
                                       5.72])
             n_epochs = 10
         if self.target_dim == 2:
-            noise = 0.001
+            noise = 0.0001
             amplitude = 1.0
             length_scales = np.array([3.71, 19.75, 2.71, 21.18, 34.79, 18.43,
                                       12.66, 4.88, 6.77, 20.6, 1.61])
             n_epochs = 10
         if self.target_dim == 3:
-            noise = 0.001
+            noise = 0.0001
             amplitude = 1.0
             length_scales = np.array([4.19, 20.24, 3.18, 21.66, 35.3, 18.91,
                                       13.14, 5.29, 7.22, 21.08, 2.02, 1.34])
