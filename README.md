@@ -1,6 +1,6 @@
 # Model-based reinforcement learning
 
-This repository contains a benchmark of model-based reinforcement learning solutions made of probabilistic models and planning agents. This code was used to run the experiments of the paper ["Model-based micro-data reinforcement learning: what are the crucial model properties and which model to choose?", Balázs Kégl, Gabriel Hurtado, Albert Thomas, ICLR 2021](https://openreview.net/forum?id=p5uylG94S68).
+This repository contains a benchmark of model-based reinforcement learning solutions made of probabilistic models and planning agents. This benchmark was used to run the experiments of the paper ["Model-based micro-data reinforcement learning: what are the crucial model properties and which model to choose?", Balázs Kégl, Gabriel Hurtado, Albert Thomas, ICLR 2021](https://openreview.net/forum?id=p5uylG94S68).
 
 The different systems of the benchmark are located in the `benchmark/` folder. Each system has its own folder where one can
 - train and evaluate the different (probabilistic) models on static datasets with common regression metrics (likelihood, R2, ...) by using the `ramp-test` command from [ramp-workflow](https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/advanced/index.html) (see the [ramp-test command documentation](https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/advanced/command_line.html#ramp-test) for more information on how to use this command)
@@ -30,11 +30,11 @@ Finally, if you want to run the inverted pendulum experiments you need [MuJoCo 2
 
 ## Get started
 
-We will go through the different functionalities using the acrobot system located in `benchmark/acrobot/`. The main structure of this folder follows the one used by [ramp-workflow](https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/advanced/workflow.html) with a few additional components for the dynamic evaluation (model-based reinforcement learning loop):
-* the ramp-workflow `problem.py` file specifying the problem and the training and evaluation protocol.
+We will go through the different functionalities using the acrobot system located in `benchmark/acrobot/`. The main structure of this folder is based on the one required by [ramp-workflow](https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/advanced/workflow.html) with a few additional components for the dynamic evaluation (model-based reinforcement learning loop):
+* the ramp-workflow `problem.py` file specifying the problem and the training and evaluation protocol
 * the `env.py` file for the Open AI gym environment of the acrobot system
 * the `reward_function.py` file for the reward function of the reinforcement learning task
-* the `generate_static_trace.py` file, used to generate the static datasets from the real system
+* the `generate_static_trace.py` file used to generate the static datasets from the real system
 * the `data/` folder containing the static datasets generated on the real system 
 * the `submissions/` folder containing the different models
 * the `agents/` folder containing the different agents
