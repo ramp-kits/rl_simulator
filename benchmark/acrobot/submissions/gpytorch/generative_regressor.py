@@ -146,8 +146,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
 
         # The last generative regressors is uniform,
         # the others are gaussians
-        types = np.zeros(N_GAUSSIANS)
-        types = np.array([types] * len(X_in))
+        types = ['norm'] * N_GAUSSIANS * mus.shape[1]
 
         return weights, types, params
 
