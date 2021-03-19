@@ -22,9 +22,11 @@ By default this will create an environment named `mbrl`. You can specify the nam
 pip install git+https://github.com/paris-saclay-cds/ramp-workflow.git@generative_regression_clean
 ```
 
-4. Finally, install the `mbrl-tools` package by running `pip install .` in the `mbrl-tools/` directory.
+4. Install the `mbrl-tools` package by running `pip install .` in the `mbrl-tools/` directory.
 
 With this installation you can run all the models of the ICLR 2021 paper. If you do not want to run all the models you might only need a subset of the packages listed in `environment.yml`.
+
+Finally, if you want to run the inverted pendulum experiments you need [MuJoCo 2.0](http://www.mujoco.org/index.html) and [mujoco-py](https://github.com/openai/mujoco-py). `mujoco-py` can be installed easily with `pip install mujoco-py`.
 
 ## Get started
 
