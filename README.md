@@ -49,9 +49,9 @@ For more information on the `ramp-test` options and generated outputs please ref
 ### Dynamic evaluation
 To evaluate a model, coupled with a random shooting agent, in a model-based reinforcement learning setup use the `model-based-rl` command. For instance to evaluate the linear model you can run
 ```
-model-based-rl --agent-name random_shooting --submission arlin_sigma
+model-based-rl --submission arlin_sigma --agent-name random_shooting
 ```
-You can also choose the number of epochs, the minimum number of steps per epoch or even use an initial trace instead of running a random agent for the first epoch. More information on the different arguments can be obtained by running `model-based-rl --help`.
+The `--submission` option name was inherited from the terminology used by `ramp-test`. Other options include the number of epochs, the minimum number of steps per epoch, using an initial trace instead of running a random agent for the first epoch. More information on the different options can be obtained by running `model-based-rl --help`.
 
 ## Citation
 If you use this code please cite our ICLR 2021 paper:
