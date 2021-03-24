@@ -85,9 +85,16 @@ def mbrl_run(agent_name, submission,
     restart_name = metadata["restart_name"]
     reward_name = metadata["reward"]
 
+    # states are also saved besides the observations in the trace for ease of
+    # replay from the collected traces.
+    # get the number of states
+    system_env.reset()
+    n_states = len(system_env.get_state()[1])
+
     trace_header = (
         observation_names + action_names + reward_name +
-        [restart_name] + ['epoch_id'])
+        [restart_name] + ['epoch_id'] +
+        [f'state_{i}' for i in range(n_states)])
 
     epoch_output_dir = os.path.join(output_dir, 'epoch_0')
     if initial_trace:

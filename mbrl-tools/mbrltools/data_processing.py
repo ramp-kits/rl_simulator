@@ -136,6 +136,7 @@ def rollout(system_env, n_action_features,
 
     while epoch_step < min_epoch_steps:
         observation = system_env.reset()
+        _, state = system_env.get_state()
 
         rewards = []
         done = 0
@@ -153,17 +154,18 @@ def rollout(system_env, n_action_features,
             rewards.append(reward)
 
             trace_step = np.hstack(
-                (observation, action, reward, restart, epoch))
+                (observation, action, reward, restart, epoch, state))
             trace.append(trace_step)
 
             # update observation
             episode_step += 1
             observation = new_observation
+            _, state = system_env.get_state()
 
         # save last observation before a reset
         n_nans = n_action_features + 1  # NaNs for actions and reward
         last_obs = np.hstack(
-            (observation, np.repeat(np.nan, n_nans), 0, epoch))
+            (observation, np.repeat(np.nan, n_nans), 0, epoch, state))
         trace.append(last_obs)
 
         epoch_step += episode_step

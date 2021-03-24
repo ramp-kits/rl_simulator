@@ -15,6 +15,9 @@ def create_random_trace():
         # create random initial trace and save it as a csv file
         env = system_env_object()
         env.seed(0)
+        env.reset()
+        n_states = len(env.get_state()[1])
+
         trace = rollout(system_env=env, n_action_features=n_action_features,
                         epoch=0, min_epoch_steps=10, agent=None)
 
@@ -24,7 +27,8 @@ def create_random_trace():
         reward_name = metadata["reward"]
         trace_header = (
             observation_names + action_names + reward_name +
-            [restart_name] + ['epoch_id'])
+            [restart_name] + ['epoch_id'] +
+            [f'state_{i}' for i in range(n_states)])
         trace_df = pd.DataFrame(data=trace, columns=trace_header)
         trace_dir = os.path.join(path_dir, 'epoch_0')
         os.makedirs(trace_dir)

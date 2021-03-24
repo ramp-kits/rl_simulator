@@ -50,3 +50,12 @@ class Env(AcrobotEnv):
     def get_state(self):
         """Get state of the environement."""
         return self._elapsed_steps, self.state
+
+    def set_state_from_observation(self, full_state):
+        """Set state from observations.
+
+        This is needed when generating videos.
+
+        XXX remove this when states are stored along the observations so that
+        set_state can be used"""
+        return self.set_state(full_state)

@@ -13,7 +13,7 @@ dependencies:
   - click=7.1.*
   - scikit-learn=0.24.*
   - dill=0.3.*
-  - gym=0.18.*
+  - gym=0.17.*
   - torchvision=0.8.*
   - pytorch=1.7.*
   - cpuonly=1.0

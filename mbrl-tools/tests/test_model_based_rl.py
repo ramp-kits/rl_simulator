@@ -6,6 +6,8 @@ from mbrltools.model_based_rl import mbrl_run
 import numpy as np
 from numpy.testing import assert_array_equal
 
+from gym import core
+
 from mbrltools.data_processing import rollout
 
 # To be able to test the functions with the small_acrobot test example
@@ -25,11 +27,36 @@ DIR_PATH = os.path.dirname(__file__)
 small_acrobot_dir_path = os.path.join(DIR_PATH, 'small_acrobot')
 
 
-def test_rollout(monkeypatch):
-    # check rollout on acrobot with short episodes and cyclic agent
-    monkeypatch.chdir(small_acrobot_dir_path)
-    monkeypatch.syspath_prepend(small_acrobot_dir_path)
-    from env import Env
+def test_rollout():
+    # check rollout on simple env and cyclic agent
+
+    class Env(core.Env):
+        def __init__(self, max_episode_steps=5):
+            self.max_episode_steps = max_episode_steps
+            super(Env, self).__init__()
+
+        def get_observation(self):
+            return np.r_[0, 10 + self.state]
+
+        def reset(self):
+            self._elapsed_steps = 0
+            self.state = np.array([0, 0, 0, 0])
+            return self.get_observation()
+
+        def step(self, action):
+            state = self.state
+            self.state = state + 1
+            self._elapsed_steps += 1
+            reward = state[-1]
+            done = (self._elapsed_steps >= self.max_episode_steps)
+            observation = self.get_observation()
+            return observation, reward, int(done), {}
+
+        def set_state(self, full_state):
+            self._elapsed_steps, self.state = full_state
+
+        def get_state(self):
+            return self._elapsed_steps, self.state
 
     class CyclicAgent:
         def __init__(self, actions=np.array([0, 1, 2])):
@@ -46,7 +73,6 @@ def test_rollout(monkeypatch):
     min_epoch_steps = n_episodes * max_episode_steps  # 2 episodes in epoch
 
     system_env = Env(max_episode_steps=max_episode_steps)
-    system_env.seed(0)
 
     agent = CyclicAgent()
 
@@ -54,25 +80,39 @@ def test_rollout(monkeypatch):
                     system_env=system_env, agent=agent, n_action_features=1,
                     episodic_update=False)
 
-    # adding n_episodes in right side to count last observations of the
-    # episodes, the ones just before the reset
     assert isinstance(trace, list)
 
     trace_array = np.asarray(trace)
-    # columns of trace_array are observations, actions, reward, done and epoch
-    assert trace_array.shape == (min_epoch_steps + n_episodes, 8)
-    trace_actions = trace_array[:, 4]
+    # adding n_episodes to count the last observations of the
+    # episodes, the ones just before the reset.
+    # columns of trace_array are observations, actions, reward, done, epoch
+    # and states
+    assert trace_array.shape == (min_epoch_steps + n_episodes, 13)
+    trace_actions = trace_array[:, 5]
     expected_actions = np.array(
         [0.,  1.,  2.,  0.,  1., np.nan,  2.,  0.,  1.,  2.,  0., np.nan])
     assert_array_equal(trace_actions, expected_actions)
 
-    trace_restart = trace_array[:, 6]
+    trace_restart = trace_array[:, 7]
     expected_restarts = np.array(
         [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
     assert_array_equal(trace_restart, expected_restarts)
 
-    trace_epoch = trace_array[:, 7]
+    trace_epoch = trace_array[:, 8]
     assert_array_equal(trace_epoch, np.zeros(min_epoch_steps + n_episodes))
+
+    trace_states = trace_array[:, -4:]
+    expected_states = (np.zeros((max_episode_steps + 1, 4)) +
+                       np.arange(max_episode_steps + 1).reshape(-1, 1))
+    expected_states = np.concatenate(
+        [expected_states, expected_states], axis=0)
+    assert_array_equal(trace_states, expected_states)
+
+    trace_observations = trace_array[:, :5]
+    expected_observations = np.concatenate(
+        [np.zeros((2 * (max_episode_steps + 1), 1)), 10 + expected_states],
+        axis=1)
+    assert_array_equal(trace_observations, expected_observations)
 
     # check when episodic_update is set to True
     trace = rollout(epoch=epoch, min_epoch_steps=min_epoch_steps,

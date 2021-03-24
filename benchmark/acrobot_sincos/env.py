@@ -49,3 +49,21 @@ class Env(AcrobotEnv):
     def get_state(self):
         """Get state of the environement."""
         return self._elapsed_steps, self.state
+
+    def set_state_from_observation(self, full_state):
+        """Set state from observations.
+
+        This is needed when generating videos.
+
+        XXX remove this when states are stored along the observations so that
+        set_state can be used"""
+        self._elapsed_steps, observation = full_state
+        cos_theta_1 = observation[0]
+        sin_theta_1 = observation[1]
+        cos_theta_2 = observation[2]
+        sin_theta_2 = observation[3]
+        theta_dot_1 = observation[4]
+        theta_dot_2 = observation[5]
+        theta_1 = np.arctan2(sin_theta_1, cos_theta_1)
+        theta_2 = np.arctan2(sin_theta_2, cos_theta_2)
+        self.state = np.r_[theta_1, theta_2, theta_dot_1, theta_dot_2]
