@@ -89,7 +89,7 @@ def get_first_episodes(trace_path, metadata, n_episodes=None):
             raise ValueError(
                 'The number of episodes to get from the initial trace is '
                 'larger than the total number of episodes')
-        if len(episode_start_ind) < n_episodes:
+        if n_episodes < len(episode_start_ind):
             # if it is equal then we have nothing to do this corresponds to
             # the whole initial trace
             first_excluded_ind = episode_start_ind[n_episodes]
