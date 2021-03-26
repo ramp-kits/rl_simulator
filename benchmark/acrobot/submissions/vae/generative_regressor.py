@@ -66,7 +66,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
             is_vae=True
         )
 
-    def sample(self, X):
+    def sample(self, X, rng=None):
         # we use predict sequentially in RL and there is no need to compute
         # model.eval() each time if the model is already in eval mode
         if self.model.training:
