@@ -1,7 +1,7 @@
 import os
 import itertools
 from mbrltools.model_env import make_model_env_class
-from mbrltools.model_based_rl import model_based_rl
+from mbrltools.model_based_rl import mbrl_run
 
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -168,7 +168,7 @@ def test_numpy_model_env(monkeypatch, capsys):
     for problem_name, submission_name, model_env_name, agent_name in zip(
             problem_names, submission_names, model_env_names, agent_names):
 
-        model_based_rl(
+        mbrl_run(
             agent_name, submission_name, n_epochs=2, min_epoch_steps=5,
             min_random_steps=5,
             episodic_update=False, initial_trace=False, model_env=model_env_name,

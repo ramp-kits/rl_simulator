@@ -12,10 +12,10 @@ from .data_processing import get_metadata_dictionary
 from .data_processing import rollout
 
 
-def model_based_rl(agent_name, submission,
-                   n_epochs, min_epoch_steps, min_random_steps,
-                   episodic_update, initial_trace, model_env,
-                   seed, problem_name=None):
+def mbrl_run(agent_name, submission,
+             n_epochs, min_epoch_steps, min_random_steps,
+             episodic_update, initial_trace, model_env,
+             seed, problem_name=None):
     """Main script of model based RL loop.
 
     The problem_name argument is used for the purpose of testing.
@@ -77,7 +77,7 @@ def model_based_rl(agent_name, submission,
         ModelEnv = make_model_env_class(system_env_object)
         model_env = ModelEnv(
             submission_path, problem_module, reward_func,
-            metadata, output_dir, seed)
+            metadata, output_dir, seed=None)
 
     # retrieving feature names
     observation_names = metadata["observation"]
@@ -89,7 +89,7 @@ def model_based_rl(agent_name, submission,
         observation_names + action_names + reward_name +
         [restart_name] + ['epoch_id'])
 
-    epoch_output_dir = os.path.join(output_dir, f'epoch_0')
+    epoch_output_dir = os.path.join(output_dir, 'epoch_0')
     if initial_trace:
         # epoch 0 is the initial trace
         print('Epoch 0: Initial trace.')
@@ -173,15 +173,15 @@ def model_based_rl(agent_name, submission,
 @click.option("--seed", default=0, show_default=True,
               help="Seed of the random number generator. Only the numpy and "
               "pytorch global random generators are seeded.")
-def model_based_rl_command(agent_name, submission,
-                           n_epochs, min_epoch_steps, min_random_steps,
-                           episodic_update, initial_trace, model_env,
-                           seed):
-    return model_based_rl(
+def mbrl_run_command(agent_name, submission,
+                     n_epochs, min_epoch_steps, min_random_steps,
+                     episodic_update, initial_trace, model_env,
+                     seed):
+    return mbrl_run(
         agent_name, submission, n_epochs, min_epoch_steps, min_random_steps,
         episodic_update, initial_trace, model_env, seed
     )
 
 
 if __name__ == "__main__":
-    model_based_rl_command()
+    mbrl_run_command()

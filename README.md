@@ -3,12 +3,14 @@
 This repository contains a benchmark of model-based reinforcement learning solutions made of probabilistic models and planning agents. This benchmark was used to run the experiments of the paper ["Model-based micro-data reinforcement learning: what are the crucial model properties and which model to choose?", Balázs Kégl, Gabriel Hurtado, Albert Thomas, ICLR 2021](https://openreview.net/forum?id=p5uylG94S68). You can also check the [associated blog post](https://towardsdatascience.com/model-based-micro-data-reinforcement-learning-cabe95990664) for the general context and a summary of this paper.
 
 The different systems of the benchmark are located in the `benchmark/` folder. Each system has its own folder where one can
-- train and evaluate the different (probabilistic) models on static datasets with common regression metrics (likelihood, R2, ...) by using the `ramp-test` command from [ramp-workflow](https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/advanced/index.html) (see the [ramp-test command documentation](https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/advanced/command_line.html#ramp-test) for more information on how to use this command)
-- evaluate the models coupled with planning agents in a classical model-based reinforcement learning setup by using the `model-based-rl` command implemented in the `mbrl-tools` package provided in this repository.
+- train and evaluate the different (probabilistic) models on static datasets with common regression metrics (likelihood, R2, ...) by using the `ramp-test` command from [ramp-workflow](https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/advanced/index.html) (see the [ramp-test command documentation](https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/advanced/command_line.html#ramp-test) for more information on how to use this command),
+- simulate traces using the learned models on the static data sets using the `mbrl-simulate` command implemented in the `mbrl-tools` package provided in this repository, mainly to compute longer-horizon scores but also for visualization, and
+- evaluate the models coupled with planning agents in a classical model-based reinforcement learning setup by using the `mbrl-run` command implemented in the `mbrl-tools` package provided in this repository.
 
 
 ## Installation
-You can easily install all the required packages with [conda](https://docs.conda.io/projects/conda/en/latest/index.html) and the following procedure:
+
+You can install all the required packages with [conda](https://docs.conda.io/projects/conda/en/latest/index.html) and the following procedure:
 1. Create a new `conda` environment from `environment.yml` using `conda >= 4.9.2`:
 ```
 conda env create -f environment.yml
@@ -40,6 +42,7 @@ We will go through the different functionalities using the acrobot system locate
 * the `agents/` folder containing the different agents
 
 ### Static evaluation
+
 To train and evaluate a model located in `submissions/` on a static dataset run `ramp-test --submission <submission_name> --data-label <dataset_name>`. For instance to run the linear model on the dataset generated with a random policy:
 ```
 ramp-test --submission arlin_sigma --data-label random
@@ -47,9 +50,10 @@ ramp-test --submission arlin_sigma --data-label random
 For more information on the `ramp-test` options and generated outputs please refer to the [ramp-workflow documentation](https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/advanced/workflow.html).
 
 ### Dynamic evaluation
-To evaluate a model, coupled with a random shooting agent, in a model-based reinforcement learning setup use the `model-based-rl` command. For instance to evaluate the linear model you can run
+
+To evaluate a model, coupled with a random shooting agent, in a model-based reinforcement learning setup use the `mbrl-run` command. For instance to evaluate the linear model you can run
 ```
-model-based-rl --submission arlin_sigma --agent-name random_shooting
+mbrl-run --submission arlin_sigma --agent-name random_shooting
 ```
 The `--submission` option name was inherited from the terminology used by `ramp-test`. Other options include the number of epochs, the minimum number of steps per epoch, using an initial trace instead of running a random agent for the first epoch. More information on the different options can be obtained by running `model-based-rl --help`.
 
