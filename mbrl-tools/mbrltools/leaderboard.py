@@ -24,7 +24,7 @@ def mar(trace_f_name):
 def minimum_mar(trace_f_name=None):
     """MAR of the random policy applied to the real system."""
     if trace_f_name is None:
-        trace_f_name = pathlib.Path('data') / 'real_traces_random.csv'
+        trace_f_name = pathlib.Path('data') / 'real_traces_rmar_0.csv'
     return mar(trace_f_name)
 
 
@@ -35,8 +35,7 @@ def optimum_mar(trace_f_name=None, agent='random_shooting'):
     Used as the optimum MAR when agent is used with models.
     """
     if trace_f_name is None:
-        trace_f_name = pathlib.Path('data') /\
-            'real_traces_{}.csv'.format(agent)
+        trace_f_name = pathlib.Path('data') / 'real_traces_rmar_1.csv'
     return mar(trace_f_name)
 
 
@@ -89,7 +88,7 @@ def mrcp_score(seed_dirs, opt_mar=None, min_mar=None, threshold=None,
             threshold = 0.7
 
     if opt_mar is None:
-        opt_mar = optimum_mar(agent='random_shooting')
+        opt_mar = optimum_mar()
     if min_mar is None:
         min_mar = minimum_mar()
 
@@ -260,7 +259,7 @@ def rmar_score(seed_dirs, opt_mar=None, min_mar=None, threshold=None,
             threshold = 0.5
 
     if opt_mar is None:
-        opt_mar = optimum_mar(agent='random_shooting')
+        opt_mar = optimum_mar()
     if min_mar is None:
         min_mar = minimum_mar()
 
