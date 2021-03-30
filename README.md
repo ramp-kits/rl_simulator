@@ -28,7 +28,7 @@ With this installation you can run all the models of the ICLR 2021 paper. If you
 
 Finally, if you want to run the inverted pendulum experiments you need [MuJoCo 2.0](http://www.mujoco.org/index.html) and [mujoco-py](https://github.com/openai/mujoco-py). `mujoco-py` can be installed easily with `pip install mujoco-py`.
 
-## Get started
+## Getting started
 
 We will go through the different functionalities using the acrobot system located in `benchmark/acrobot/`. The main structure of this folder is based on the one required by [ramp-workflow](https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/advanced/workflow.html) with a few additional components for the dynamic evaluation (model-based reinforcement learning loop):
 * the ramp-workflow `problem.py` file specifying the problem and the training and evaluation protocol
