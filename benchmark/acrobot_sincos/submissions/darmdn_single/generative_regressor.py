@@ -50,6 +50,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
         self.max_dists = max_dists
         self.decomposition = 'autoregressive'
+        self.target_dim = target_dim
 
     def fit(self, X_in, y_in):
 

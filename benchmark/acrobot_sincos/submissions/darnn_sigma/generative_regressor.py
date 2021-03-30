@@ -26,6 +26,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         self.max_dists = max_dists
         self.sigma = None
         self.decomposition = 'autoregressive'
+        self.target_dim = target_dim
 
     def fit(self, X, y):
         """

@@ -18,6 +18,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         """
         self.max_dists = max_dists
         self.decomposition = 'autoregressive'
+        self.target_dim = target_dim
 
     def fit(self, X_array, y_array):
         """Linear regression + residual sigma.

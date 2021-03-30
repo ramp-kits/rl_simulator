@@ -55,6 +55,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
     def __init__(self, max_dists, target_dim):
         self.max_dists = max_dists
         self.decomposition = None
+        self.target_dim = None
 
     def fit(self, X_in, y_in):
 
@@ -90,7 +91,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
             sigmas = np.full(shape=sigmas.shape, fill_value=1e-10)
             weights = y_pred[2*n_samples:].detach().numpy()
 
-        
+
         # We put each mu next to its sigma
         params = np.empty((n_samples, mus.shape[1] * mus.shape[2] * 2))
         params[:, 0::2] = mus.reshape(n_samples, -1)
