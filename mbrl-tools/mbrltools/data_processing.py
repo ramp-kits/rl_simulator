@@ -1,7 +1,7 @@
 import os
 import json
 
-from pathlib import Path
+import pathlib
 
 import pandas as pd
 import numpy as np
@@ -22,7 +22,7 @@ def get_metadata_dictionary(metadata):
         Dictionary containing the metadata.
     """
 
-    if isinstance(metadata, str) or isinstance(metadata, Path):
+    if isinstance(metadata, str) or isinstance(metadata, pathlib.Path):
         with open(metadata, "r") as json_file:
             metadata = json.load(json_file)
     elif not isinstance(metadata, dict):
@@ -222,3 +222,46 @@ def train_test_split(output_dir='data', trace_path='trace.csv',
 
     train_trace_df.to_csv(os.path.join(output_dir, 'X_train.csv'))
     test_trace_df.to_csv(os.path.join(output_dir, 'X_test.csv'))
+    
+
+def get_seed_dirs(submission, agent, verbose=False):
+    """Return the list of seed folders."""
+    path = pathlib.Path('submissions') / submission / 'mbrl_outputs' / agent
+    seed_dirs = list(path.glob('seed*'))
+    if len(seed_dirs) == 0 and verbose:
+        print(f'{path} not found or empty')
+    return seed_dirs
+
+
+def get_trace_df(seed_dir, verbose=False):
+    """Reading and assembling trace files.
+    
+    Unavailable files are silently ignored
+
+    Parameters
+    ----------
+    seed_dir : str
+        folder name where the epochs are found
+    verbose : boolean
+        if true, unloadable traces are printed
+    Returns
+    -------
+    pandas DataFrame (not ordered by epoch id)    
+    """
+    metadata_path = os.path.join('data', 'metadata.json')
+    metadata = get_metadata_dictionary(metadata_path)
+    trace_paths = list(seed_dir.glob('epoch_*/trace.csv'))
+    trace_dfs = []
+    for trace_path in trace_paths:
+        try:
+            trace_df = read_data_with_metadata(trace_path, metadata)
+            trace_dfs.append(trace_df)
+        except FileNotFoundError:
+            if verbose:
+                print('{} not found.'.format(trace_path))
+    if len(trace_dfs) == 0:
+        return None
+    all_traces = pd.concat(trace_dfs, axis=0).reset_index(drop=True)
+    all_traces = preprocess_time(all_traces, metadata)
+    trace_df = all_traces.dropna().reset_index().reset_index()
+    return trace_df

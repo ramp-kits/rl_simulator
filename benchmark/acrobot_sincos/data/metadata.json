@@ -4,6 +4,10 @@
     "action": ["torque"],
     "reward": ["reward"],
     "restart_name": "restart",
-    "n_burn_in": 0
+    "n_burn_in": 0,
+    "n_epochs": 100,
+    "min_epoch_steps": 200,
+    "mar_threshold": 50,
+    "mrcp_threshold": 0.7
 }
 
