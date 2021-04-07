@@ -38,19 +38,14 @@ class Env(AcrobotEnv):
         observations, _, _, info = super(Env, self).step(action)
         self._elapsed_steps += 1
         reward = reward_func(np.r_[observations, action])
-        done = (self._elapsed_steps == self.max_episode_steps)
+        # using >= in case we need the info when planning with the real env
+        done = (self._elapsed_steps >= self.max_episode_steps)
         return observations, reward, int(done), info
 
-    def set_history(self, observation):
-        """Set state of the environment.
+    def set_state(self, full_state):
+        """Set state of the environment."""
+        self._elapsed_steps, self.state = full_state
 
-        Used for compatibility with model environment."""
-        cos_theta_1 = observation[0]
-        sin_theta_1 = observation[1]
-        cos_theta_2 = observation[2]
-        sin_theta_2 = observation[3]
-        theta_dot_1 = observation[4]
-        theta_dot_2 = observation[5]
-        theta_1 = np.arctan2(sin_theta_1, cos_theta_1)
-        theta_2 = np.arctan2(sin_theta_2, cos_theta_2)
-        self.state = np.r_[theta_1, theta_2, theta_dot_1, theta_dot_2]
+    def get_state(self):
+        """Get state of the environement."""
+        return self._elapsed_steps, self.state

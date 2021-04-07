@@ -43,10 +43,24 @@ class Env(InvertedPendulumEnv):
         self._elapsed_steps += 1
         notdone = (np.isfinite(observation).all() and
                    (np.abs(observation[1]) <= 0.2))
-        done_steps = (self._elapsed_steps == self.max_episode_steps)
+        # using >= in case we need the info when planning with the real env
+        done_steps = (self._elapsed_steps >= self.max_episode_steps)
         done = done_steps or not notdone
         reward = reward_func(np.r_[observation, action])
         return observation, reward, done, info
+
+    def reset_model(self):
+        """Overriding gym method.
+
+        To use super(Env, self).set_state so that the called set_state is the
+        one of the MujocoEnv base class and not the one of this class"""
+
+        qpos = self.init_qpos + self.np_random.uniform(
+            size=self.model.nq, low=-0.01, high=0.01)
+        qvel = self.init_qvel + self.np_random.uniform(
+            size=self.model.nv, low=-0.01, high=0.01)
+        super(Env, self).set_state(qpos, qvel)
+        return self._get_obs()
 
     def __getstate__(self):
         """For copying and pickling.
@@ -85,5 +99,13 @@ class Env(InvertedPendulumEnv):
         state_dict_no_data = {key: state_dict[key] for key in state_dict
                               if key != 'qpos' and key != 'qvel'}
         super(Env, self).__setstate__(state_dict_no_data)
-        self.set_state(state_dict['qpos'], state_dict['qvel'])
+        super(Env, self).set_state(state_dict['qpos'], state_dict['qvel'])
         self._elapsed_steps = state_dict['_elapsed_steps']
+
+    def set_state(self, full_state):
+        """For compatibility with other environments."""
+        self.__setstate__(full_state)
+
+    def get_state(self):
+        """For compatibility with other environments."""
+        return self.__getstate__()

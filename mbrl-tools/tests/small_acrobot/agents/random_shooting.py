@@ -72,18 +72,25 @@ class Agent:
         if self.random_action:
             action = self.np_random.randint(N_ACTIONS)
         else:
+            # recover current state/history of the environment
+            if hasattr(self.env, 'history'):
+                initial_state = copy.deepcopy(self.env.history)
+            else:  # real system
+                initial_state = copy.deepcopy(self.env.get_state())
+
             action_sequences = self.np_random.randint(
                 N_ACTIONS, size=(N_ACTION_SEQUENCES, PLANNING_HORIZON))
 
-            def _parallel_func(action_sequence, env):
-                env_copies = [copy.deepcopy(env) for _ in range(N_PARTICLES)]
-
+            def _parallel_func(action_sequence, env, initial_state):
                 returns = np.zeros(N_PARTICLES)
                 for p in range(N_PARTICLES):
-                    env_p = env_copies[p]
+                    if hasattr(env, 'history'):
+                        env.history = initial_state
+                    else:
+                        env.set_state(initial_state)
 
                     for a, action in enumerate(action_sequence):
-                        _, reward, _, _ = env_p.step(action)
+                        _, reward, _, _ = env.step(action)
                         returns[p] += (self.gamma ** a * reward)
 
                 return returns
@@ -91,7 +98,8 @@ class Agent:
             all_returns = Parallel(n_jobs=N_JOBS, verbose=1)(
                 delayed(_parallel_func)(
                     action_sequence,
-                    copy.deepcopy(self.env))
+                    self.env,
+                    initial_state)
                 for action_sequence in action_sequences)
 
             all_returns = np.array(all_returns)
@@ -99,6 +107,12 @@ class Agent:
             returns_argmax = np.argmax(returns)
             best_action_sequence = action_sequences[returns_argmax]
             action = best_action_sequence[0]
+
+            # put env back to its initial state
+            if hasattr(self.env, 'history'):
+                self.env.history = initial_state
+            else:
+                self.env.set_state(initial_state)
 
         if hasattr(self.env, 'history'):
             self.env.add_action_to_history(action)
