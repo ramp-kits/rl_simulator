@@ -46,7 +46,7 @@ class Env(InvertedPendulumEnv):
         # using >= in case we need the info when planning with the real env
         done_steps = (self._elapsed_steps >= self.max_episode_steps)
         done = done_steps or not notdone
-        reward = reward_func(np.r_[observation, action])
+        reward = reward_func(np.r_[observation, action].reshape(1, -1))[0]
         return observation, reward, done, info
 
     def reset_model(self):

@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import cloudpickle
 
+from gym.spaces import Discrete
+
 from .data_processing import read_data_with_metadata
 from .data_processing import preprocess_time
 
@@ -53,11 +55,20 @@ def make_model_env_class(system_env_object):
 
         def __init__(self, submission_path, problem_module, reward_func,
                      metadata, output_dir, seed=None):
+
+            # get needed attributes from parent class. we create an instance
+            # because for mujoco env calling super.__init__ would call
+            # self.step and thus use the step of this class instead of the step
+            # of the mujoco env
+            system_env = system_env_object()
+            self.action_space = system_env.action_space
+            self.observation_space = system_env.observation_space
+            super(ModelEnv, self).seed(seed)
+
             self.submission_path = submission_path
             self.reward_func = reward_func
             self.metadata = metadata
             self.output_dir = output_dir
-            super(ModelEnv, self).seed(seed)
 
             # only storing needed problem_module attributes as problem_module
             # can be problematic to pickle
@@ -76,84 +87,108 @@ def make_model_env_class(system_env_object):
             self.observation_names = metadata['observation']
             self.restart_name = metadata['restart_name']
 
-        def set_history(self, observation, restart):
-            """Reset the history with the given observations
-
-            Parameters
-            ----------
-            observation : array, shape (n_features)
-                Observations.
-            restart : int
-                Whether the observation is the first of an episode. This is
-                used to know the history the model can use.
-            """
-            # reset history
-            history_col_names = (['time'] + self.observation_names +
-                                 self.action_names + [self.restart_name])
-            n_action_features = len(self.action_names)
-            # XXX we use 0 as an arbitrary start time
-            # each sample of the history is made of one observation and one
-            # action, the action being the one selected after the given
-            # observation.
-            # the unknown next action is set to NaN for now and will be
-            # replaced by the action of the next call to step.
-            history = np.r_[
-                0, observation.ravel(), [np.nan] * n_action_features, restart]
-            history = history.reshape(1, -1)
-            history = (pd.DataFrame(data=history, columns=history_col_names)
-                       .set_index('time'))
-            self.history = history
-
-        def add_observation_to_history(self, observation, restart):
+        def add_observations_to_history(self, observations, restart):
             """Update history with the new given observation
 
             Parameters
             ----------
-            observation : array, shape (n_features)
+            observations : array, shape (n_samples, n_features)
                 Observations.
-            restart : int
+            restarts : array, shape (n_samples, 1)
                 Whether the observation is the first of an episode. This is
                 used to know the history the model can use.
             """
-            if restart:
-                self.set_history(observation, restart)
+            n_samples = observations.shape[0]
+
+            # we do not yet support the vectorized environment if
+            # n_burn_in >= 1 as this requires a different history array for
+            # each sample. waiting for when we need it, we do not use
+            # n_burn_in >= 1 for now.
+            if n_samples > 1 and self.n_burn_in >= 1:
+                raise ValueError('When n_burn_in > 1, the passed observations'
+                                 ' and restart arrays must only have 1 sample')
+            if n_samples != restart.shape[0]:
+                raise ValueError('observations and restart arrays must have'
+                                 ' the same number of samples/rows.')
+
+            if self.n_burn_in >= 1 and restart[0]:
+                # reset history
+                # because of the check above observations only contains one
+                # sample and restart as well
+                times = np.array([[0]])
+                self.history = self._build_new_history(
+                    times, observations, restart)
             else:
-                history_df = self.history
-                # the action is set to NaN for now and will be updated when
-                # needed
-                new_sample_col_names = (
-                    ['time'] + self.observation_names +
-                    self.action_names + [self.restart_name])
-                new_time = history_df.index[-1] + 1
+                if self.n_burn_in >= 1:
+                    times = self.history.index[-1] + 1
+                    times = np.array([times]).reshape(1, -1)
+                else:
+                    times = np.zeros((n_samples, 1))
 
-                # the unknown next action is set to NaN for now and will be
-                # replaced by the action of the next call to step.
-                n_action_features = len(self.action_names)
-                new_sample = np.r_[
-                    new_time, observation,
-                    [np.nan] * n_action_features,
-                    restart]
-                new_sample = new_sample.reshape(1, -1)
-                new_sample = pd.DataFrame(
-                    data=new_sample,
-                    columns=new_sample_col_names).set_index('time')
-                history_df = pd.concat([history_df, new_sample], axis=0)
-                # keep history size less than n_burn_in + 1 samples
-                self.history = history_df.iloc[-(self.n_burn_in + 1):]
+                history_df = self._build_new_history(
+                    times, observations, restart)
 
-        def add_action_to_history(self, action):
+                if self.n_burn_in >= 1:
+                    # we concatenate with previous history
+                    history_df = pd.concat([self.history, history_df], axis=0)
+                    history_df = history_df.iloc[-(self.n_burn_in + 1):]
+
+                self.history = history_df
+
+        def _build_new_history(self, times, observations, restart):
+            """Build new history.
+
+            To be used as new history or to be appended to previous history
+            if n_burn_in >= 1.
+
+            Parameters
+            ----------
+            times : array, shape (n_samples, 1)
+                Times to use for the new history samples.
+            observations : array, shape (n_samples, n_features)
+                Observations to be put in the new history
+            restart : array, shape (n_samples, 1)
+                Restarts.
+
+            Returns
+            -------
+            history_df : pandas dataframe, shape (n_samples, n_features + 2)
+                New history.
+            """
+            n_samples = observations.shape[0]
+
+            history_col_names = (
+                ['time'] + self.observation_names + self.action_names +
+                [self.restart_name])
+
+            # the unknown next actions are set to NaN for now and will be
+            # replaced by the actions of the next call to step.
+            n_action_features = len(self.action_names)
+            nan_actions = np.full(
+                (n_samples, n_action_features), np.nan)
+
+            history = np.concatenate(
+                (times, observations, nan_actions, restart),
+                axis=1)
+            history_df = (pd.DataFrame(data=history, columns=history_col_names)
+                          .set_index('time'))
+
+            return history_df
+
+        def add_action_to_history(self, actions):
             """Update history with the given action.
 
             Add this action to the last observation of the history.
 
             Parameters
             ----------
-            action : array
+            actions : array, shape (n_samples, n_action_features)
                 Action.
             """
-            action_col_num = self.history.columns.get_indexer(
+            n_samples = actions.shape[0]
+            action_col_ind = self.history.columns.get_indexer(
                 self.action_names)
-            self.history.iloc[-1, action_col_num] = action
+            self.history.iloc[-n_samples:, action_col_ind] = actions
 
         def reset(self):
             """Reset method of the environment.
@@ -166,7 +201,8 @@ def make_model_env_class(system_env_object):
                 The passed observation if not None or a new observation.
             """
             observation = super(ModelEnv, self).reset()
-            self.set_history(observation, 1)
+            self.add_observations_to_history(
+                observation.reshape(1, -1), np.array([[1]]))
 
             return observation
 
@@ -190,7 +226,7 @@ def make_model_env_class(system_env_object):
                 self.model, history, random_state=seed)
             return observations
 
-        def step(self, action):
+        def step(self, actions):
             """Step function of the model environment.
 
             The history of the environment is used by the model for the
@@ -201,37 +237,54 @@ def make_model_env_class(system_env_object):
 
             Parameters
             ----------
-            action : numpy array, shape (n_action_features,)
-                The action to be taken.
+            actions : int or numpy array, shape (n_samples, n_action_features
+            or (n_action_features,)
+                The actions to be taken. Can be an int if action_space is
+                of Discrete type. If actions is a 1D array it is assumed
+                that it contains one sample. Allowing to pass int or a 1D array
+                is needed for compatibility with gym environments, for instance
+                when training a model-free agent with the model environment.
 
             Returns
             -------
-            observation : numpy array, shape (n_observations,)
+            observation : numpy array, shape (n_samples, n_features)
                 The sampled observations.
 
-            reward : float
+            reward : numpy array, shape (n_samples,)
                 Reward computed from the taken action and the obtained
                 observations.
 
-            done : int
-                0 is always returned.
+            done : numpy array, shape (n_samples)
+                An array of zeros is always returned.
 
             info : dict
                 Empty dict, used for compatibility with AI Gym API.
             """
-            self.add_action_to_history(action)
+            if (isinstance(self.action_space, Discrete) and
+                    not isinstance(actions, np.ndarray)):
+                actions = np.array([actions]).reshape(1, -1)
 
-            observation = self._workflow_step(self.history, seed=None)
-            observation = observation.to_numpy().ravel()
-            reward = self.reward_func(np.r_[observation, action])
+            if actions.ndim == 1:
+                actions = actions.reshape(1, -1)
 
-            self.add_observation_to_history(observation, 0)
+            n_samples = actions.shape[0]
+            if n_samples > 1 and self.n_burn_in >= 1:
+                raise ValueError(
+                    'When n_burn_in > 1, the passed actions array must only '
+                    'have 1 sample')
+            self.add_action_to_history(actions)
+
+            observations = self._workflow_step(self.history, seed=None)
+            observations = observations.to_numpy()
+            rewards = self.reward_func(
+                np.concatenate((observations, actions), axis=1))
+
+            self.add_observations_to_history(
+                observations, np.zeros((n_samples, 1)))
 
             # we do not terminate early when using the models and thus always
             # return 0 for the done variable
-            done = 0
-
-            return observation, reward, done, {}
+            return observations, rewards, np.zeros(n_samples), {}
 
         def train_model(self, epoch):
             """Update model with collected data.

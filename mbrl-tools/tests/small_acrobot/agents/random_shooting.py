@@ -67,7 +67,8 @@ class Agent:
             The action to take.
         """
         if hasattr(self.env, 'history'):
-            self.env.add_observation_to_history(observations, restart)
+            self.env.add_observations_to_history(
+                observations.reshape(-1, 1), np.array([[restart]]))
 
         if self.random_action:
             action = self.np_random.randint(N_ACTIONS)

@@ -53,7 +53,7 @@ def test_reset(monkeypatch):
         history, np.r_[model_env_observation, np.nan, 1].reshape(1, -1))
 
 
-def test_set_history(monkeypatch):
+def test_add_action_and_add_observations_to_history(monkeypatch):
     monkeypatch.chdir(small_acrobot_dir_path)
     monkeypatch.syspath_prepend(small_acrobot_dir_path)
     import problem
@@ -65,36 +65,20 @@ def test_set_history(monkeypatch):
     model_env = ModelEnv(
         submission_path=None, problem_module=problem, reward_func=None,
         metadata=problem.metadata, output_dir=None, seed=seed)
-    rand_observation = rng.randn(4)
-    restart = 1
-    model_env.set_history(rand_observation, restart)
-    history = model_env.history.to_numpy()
-    assert_array_almost_equal(
-        history, np.r_[rand_observation, np.nan, restart].reshape(1, -1))
-
-
-def test_add_action_and_add_observation_to_history(monkeypatch):
-    monkeypatch.chdir(small_acrobot_dir_path)
-    monkeypatch.syspath_prepend(small_acrobot_dir_path)
-    import problem
-    from env import Env
-    ModelEnv = make_model_env_class(Env)
-
-    seed = 1
-    rng = np.random.RandomState(seed)
-    model_env = ModelEnv(
-        submission_path=None, problem_module=problem, reward_func=None,
-        metadata=problem.metadata, output_dir=None, seed=seed)
-    rand_observation = rng.randn(4)
-    restart = 1
-    model_env.add_observation_to_history(rand_observation, restart)
+    rand_observation = rng.randn(1, 4)
+    restart = np.array([[1]])
+    model_env.add_observations_to_history(rand_observation, restart)
     history_1 = model_env.history.to_numpy()
     assert_array_almost_equal(
-        history_1, np.r_[rand_observation, np.nan, restart].reshape(1, -1))
-    model_env.add_action_to_history(1)
+        history_1,
+        np.concatenate([rand_observation, [[np.nan]], restart], axis=1)
+    )
+    action = np.array([[1]])
+    model_env.add_action_to_history(action)
     history_2 = model_env.history.to_numpy()
     assert_array_almost_equal(
-        history_2, np.r_[rand_observation, 1, restart].reshape(1, -1)
+        history_2,
+        np.concatenate([rand_observation, action, restart], axis=1)
     )
 
 
@@ -120,10 +104,10 @@ def test_step(monkeypatch):
         return observation
 
     def _reward_func(observables):
-        # observables contains observations and actions, it is important to have
-        # a function of both the observations and actions for the tests.
-        observations = observables[:4]
-        action = observables[4]
+        # observables contains observations and actions, it is important to
+        # have a function of both the observations and actions for the tests.
+        observations = observables[:, :4]
+        action = observables[:, 4]
         return np.sum(observations) + action ** 2
 
     seed = 1
@@ -142,10 +126,12 @@ def test_step(monkeypatch):
     history_1[0, 5] = 1  # restart flag
     for a, action in enumerate(actions):
         history_1[a, 4] = action
-        observation, reward, done, _ = model_env.step(action)
+        observation, reward_1, done, _ = model_env.step(action)
         assert_array_equal(
-            observation, np.full(shape=(4,), fill_value=action ** 2))
-        assert reward == _reward_func(np.r_[observation, action])
+            observation, np.full(shape=(1, 4), fill_value=action ** 2))
+        reward_2 = _reward_func(
+            np.concatenate((observation, [[action]]), axis=1))
+        assert reward_1 == reward_2
         assert done == 0
         history_1[a + 1, :4] = observation
         history_1[a + 1, 5] = 0  # restart flag

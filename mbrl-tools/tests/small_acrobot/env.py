@@ -42,7 +42,7 @@ class Env(AcrobotEnv):
         _, _, _, info = super(Env, self).step(action)
         self._elapsed_steps += 1
         observations = self.state
-        reward = reward_func(np.r_[observations, action])
+        reward = reward_func(np.r_[observations, action].reshape(1, -1))[0]
         done = (self._elapsed_steps >= self.max_episode_steps)
         return observations, reward, int(done), info
 

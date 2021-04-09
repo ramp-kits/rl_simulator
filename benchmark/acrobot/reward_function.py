@@ -1,4 +1,4 @@
-import math as m
+import numpy as np
 
 
 def reward_func(observations):
@@ -13,7 +13,7 @@ def reward_func(observations):
 
     Parameters
     ----------
-    observations : array, shape (n_observations + n_actions,)
+    observations : array, shape (n_samples, n_observations + n_actions)
         Observations and actions. The last feature is the action, which is not
         used here but put for compatibility with other environments.
         Note that this is the action leading to the obtained observations.
@@ -23,10 +23,10 @@ def reward_func(observations):
     reward : float
         Reward.
     """
-    observations = observations[:-1]
+    observations = observations[:, :-1]
 
-    reward = 2 - (m.cos(observations[0]) +
-                  (m.cos(observations[0]) * m.cos(observations[1]) -
-                   m.sin(observations[0]) * m.sin(observations[1])))
+    reward = 2 - (np.cos(observations[:, 0]) +
+                  (np.cos(observations[:, 0]) * np.cos(observations[:, 1]) -
+                   np.sin(observations[:, 0]) * np.sin(observations[:, 1])))
 
     return reward

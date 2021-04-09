@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.utils import check_random_state
 
 import torch.nn as nn
 import torch.optim as optim
@@ -93,6 +94,19 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         weights = np.ones((n_samples, 1))
 
         return weights, types, params
+
+    def sample(self, X, rng=None, restart=None):
+        n_samples = X.shape[0]
+        rng = check_random_state(rng)
+
+        distribution = self.predict(X)
+
+        _, _, params = distribution
+        means = params[:, 0]
+        sigmas = params[:, 1]
+
+        y_sampled = means + rng.randn(n_samples) * sigmas
+        return y_sampled
 
 
 class SimpleBinnedNoBounds(nn.Module):

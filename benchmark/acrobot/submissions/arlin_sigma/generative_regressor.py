@@ -2,6 +2,7 @@ import warnings
 
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn.utils.validation import check_random_state
 
 from rampwf.utils import BaseGenerativeRegressor
 
@@ -71,3 +72,16 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         params = np.concatenate((y_pred, sigmas), axis=1)
         weights = np.ones((n_samples, 1))
         return weights, types, params
+
+    def sample(self, X, rng=None, restart=None):
+        n_samples = X.shape[0]
+        rng = check_random_state(rng)
+
+        distribution = self.predict(X)
+
+        _, _, params = distribution
+        means = params[:, 0]
+        sigmas = params[:, 1]
+
+        y_sampled = means + rng.randn(n_samples) * sigmas
+        return y_sampled

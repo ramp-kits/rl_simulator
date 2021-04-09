@@ -11,7 +11,7 @@ def reward_func(observations):
 
     Parameters
     ----------
-    observations : array, shape (n_observations + n_actions,)
+    observations : array, shape (n_samples, n_observations + n_actions)
         Observations and actions. The last features are the actions.
         Note that this is the action leading to the obtained observations.
 
@@ -20,7 +20,7 @@ def reward_func(observations):
     reward : float
         Reward.
     """
-    angle = observations[1]
+    angle = observations[:, 1]
     reward = - angle ** 2
 
     return reward

@@ -76,6 +76,15 @@ class GenerativeRegressor(BaseGenerativeRegressor):
 
         return weights, types, params
 
+    def sample(self, X, rng=None, restart=None):
+
+        distribution = self.predict(X)
+
+        _, _, params = distribution
+        means = params[:, 0]
+
+        return means
+
 
 class PytorchReg(nn.Module):
     def __init__(self, input_size):

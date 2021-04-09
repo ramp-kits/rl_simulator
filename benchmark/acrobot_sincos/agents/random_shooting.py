@@ -1,15 +1,10 @@
-import copy
-
 import numpy as np
-
-from joblib import Parallel, delayed
 
 from sklearn.utils.validation import check_random_state
 
 N_PARTICLES = 5
 N_ACTION_SEQUENCES = 100
 PLANNING_HORIZON = 10
-N_JOBS = 8
 
 N_ACTIONS = 3
 
@@ -66,55 +61,34 @@ class Agent:
         action : int
             The action to take.
         """
-        if hasattr(self.env, 'history'):
-            self.env.add_observation_to_history(observations, restart)
-
         if self.random_action:
             action = self.np_random.randint(N_ACTIONS)
         else:
-            # recover current state/history of the environment
-            if hasattr(self.env, 'history'):
-                initial_state = copy.deepcopy(self.env.history)
-            else:  # real system
-                initial_state = copy.deepcopy(self.env.get_state())
+            # duplicate observations and restart to leverage the vectorized
+            # sampling of the model
+            observation_vec = np.tile(
+                observations, (N_ACTION_SEQUENCES * N_PARTICLES, 1))
+            restart_vec = np.array(
+                [restart] * N_ACTION_SEQUENCES * N_PARTICLES)
+            restart_vec = restart_vec.reshape(-1, 1)
+            self.env.add_observations_to_history(observation_vec, restart_vec)
 
             action_sequences = self.np_random.randint(
                 N_ACTIONS, size=(N_ACTION_SEQUENCES, PLANNING_HORIZON))
+            action_sequences_reps = np.repeat(
+                action_sequences, N_PARTICLES, axis=0)
 
-            def _parallel_func(action_sequence, env, initial_state):
-                returns = np.zeros(N_PARTICLES)
-                for p in range(N_PARTICLES):
-                    if hasattr(env, 'history'):
-                        env.history = initial_state
-                    else:
-                        env.set_state(initial_state)
+            all_returns = np.zeros(N_ACTION_SEQUENCES * N_PARTICLES)
+            for horizon in range(PLANNING_HORIZON):
+                actions = action_sequences_reps[:, horizon].reshape(-1, 1)
+                _, rewards, _, _ = self.env.step(actions)
+                all_returns += (self.gamma ** horizon * rewards)
 
-                    for a, action in enumerate(action_sequence):
-                        _, reward, _, _ = env.step(action)
-                        returns[p] += (self.gamma ** a * reward)
+            all_returns = all_returns.reshape(N_ACTION_SEQUENCES, N_PARTICLES)
 
-                return returns
-
-            all_returns = Parallel(n_jobs=N_JOBS, verbose=1)(
-                delayed(_parallel_func)(
-                    action_sequence,
-                    self.env,
-                    initial_state)
-                for action_sequence in action_sequences)
-
-            all_returns = np.array(all_returns)
             returns = np.mean(all_returns, axis=1)
             returns_argmax = np.argmax(returns)
             best_action_sequence = action_sequences[returns_argmax]
             action = best_action_sequence[0]
-
-            # put env back to its initial state
-            if hasattr(self.env, 'history'):
-                self.env.history = initial_state
-            else:
-                self.env.set_state(initial_state)
-
-        if hasattr(self.env, 'history'):
-            self.env.add_action_to_history(action)
 
         return action

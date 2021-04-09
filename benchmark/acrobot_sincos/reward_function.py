@@ -12,7 +12,7 @@ def reward_func(observations):
 
     Parameters
     ----------
-    observations : array, shape (n_observations + n_actions,)
+    observations : array, shape (n_samples, n_observations + n_actions)
         Observations and actions. The last feature is the action, which is not
         used here but put for compatibility with other environments.
         Note that this is the action leading to the obtained observations.
@@ -23,8 +23,8 @@ def reward_func(observations):
         Reward.
     """
 
-    reward = 2 - (observations[0] +
-                  observations[0] * observations[2] -
-                  observations[1] * observations[3])
+    reward = 2 - (observations[:, 0] +
+                  observations[:, 0] * observations[:, 2] -
+                  observations[:, 1] * observations[:, 3])
 
     return reward

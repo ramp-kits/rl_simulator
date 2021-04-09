@@ -38,7 +38,7 @@ class Env(InvertedPendulumEnv):
         """Same as parent method but using benchmark paper reward"""
         observation, _, _, info = super(Env, self).step(action)
         self._elapsed_steps += 1
-        reward = reward_func(np.r_[observation, action])
+        reward = reward_func(np.r_[observation, action].reshape(1, -1))[0]
         # using >= in case we need the info when planning with the real env
         done = (self._elapsed_steps >= self.max_episode_steps)
         return observation, reward, done, info
