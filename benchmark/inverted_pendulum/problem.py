@@ -41,7 +41,7 @@ for o_i, o in enumerate(_target_column_observation_names):
 
 # fix the seed to always have the same splits when evaluations different
 # submissions
-cv = rw.cvs.ShuffleRestart(
+cv = rw.cvs.ShufflePerEpisode(
     restart_name=_restart_name, n_burn_in=0,
     n_splits=5, n_episodes_in_test=10, random_state=37)
 get_cv = cv.get_cv

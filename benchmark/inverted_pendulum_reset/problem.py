@@ -40,7 +40,7 @@ for o_i, o in enumerate(_target_column_observation_names):
     score_types += dim_score_types
 
 # for approx. 500 steps in test set take 73 episodes
-cv = rw.cvs.ShuffleRestart(
+cv = rw.cvs.ShufflePerEpisode(
     restart_name=_restart_name, n_splits=5,
     n_episodes_in_test=73, random_state=42)
 get_cv = cv.get_cv
