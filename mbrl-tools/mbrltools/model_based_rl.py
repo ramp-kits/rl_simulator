@@ -16,7 +16,7 @@ from .data_processing import rollout
 def mbrl_run(agent_name, submission,
              n_epochs, min_epoch_steps, min_random_steps,
              episodic_update, initial_trace, model_env,
-             seed, problem_name=None):
+             seed, partial_fit=False, problem_name=None):
     """Main script of model based RL loop.
 
     The problem_name argument is used for the purpose of testing.
@@ -78,7 +78,7 @@ def mbrl_run(agent_name, submission,
         ModelEnv = make_model_env_class(system_env_object)
         model_env = ModelEnv(
             submission_path, problem_module, reward_func,
-            metadata, output_dir, seed=None)
+            metadata, output_dir, partial_fit, seed=None)
 
     # retrieving feature names
     observation_names = metadata["observation"]
@@ -181,13 +181,15 @@ def mbrl_run(agent_name, submission,
 @click.option("--seed", default=0, show_default=True,
               help="Seed of the random number generator. Only the numpy and "
               "pytorch global random generators are seeded.")
+@click.option("--partial-fit", default=False, show_default=True,
+              help="If we want to pass the model from the previous epoch.")
 def mbrl_run_command(agent_name, submission,
                      n_epochs, min_epoch_steps, min_random_steps,
                      episodic_update, initial_trace, model_env,
-                     seed):
+                     seed, partial_fit):
     return mbrl_run(
         agent_name, submission, n_epochs, min_epoch_steps, min_random_steps,
-        episodic_update, initial_trace, model_env, seed
+        episodic_update, initial_trace, model_env, seed, partial_fit,
     )
 
 

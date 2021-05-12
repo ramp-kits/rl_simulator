@@ -51,10 +51,12 @@ def make_model_env_class(system_env_object):
             model.
         seed : int
             Seed of the RNG used for this environment.
+        partial_fit : bool
+            If we want to pass the model from the previous epoch.
         """
 
         def __init__(self, submission_path, problem_module, reward_func,
-                     metadata, output_dir, seed=None):
+                     metadata, output_dir, partial_fit=False, seed=None):
 
             # get needed attributes from parent class. we create an instance
             # because for mujoco env calling super.__init__ would call
@@ -69,6 +71,7 @@ def make_model_env_class(system_env_object):
             self.reward_func = reward_func
             self.metadata = metadata
             self.output_dir = output_dir
+            self.partial_fit = partial_fit
 
             # only storing needed problem_module attributes as problem_module
             # can be problematic to pickle
@@ -158,8 +161,8 @@ def make_model_env_class(system_env_object):
             n_samples = observations.shape[0]
 
             history_col_names = (
-                ['time'] + self.observation_names + self.action_names +
-                [self.restart_name])
+                    ['time'] + self.observation_names + self.action_names +
+                    [self.restart_name])
 
             # the unknown next actions are set to NaN for now and will be
             # replaced by the actions of the next call to step.
@@ -315,8 +318,14 @@ def make_model_env_class(system_env_object):
 
             all_traces.to_csv(os.path.join(training_data_dir, 'X_train.csv'))
             X_train, y_train = self.get_train_data(epoch_output_dir)
-            trained_model = self.train_submission(
-                self.submission_path, X_train, y_train)
+
+            if epoch == 0 or not self.partial_fit:
+                trained_model = self.train_submission(
+                    self.submission_path, X_train, y_train)
+            else:
+                trained_model = self.train_submission(
+                    self.submission_path, X_train, y_train,
+                    prev_trained_submission=self.model)
 
             # saving trained model, will raise an error if a model cannot be
             # pickled
