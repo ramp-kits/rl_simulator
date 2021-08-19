@@ -54,15 +54,16 @@ def make_video(submission, agent, seed, epoch):
     with open(metadata_path) as f:
         metadata = json.load(f)
 
-    observation_names = metadata["observation"]
     action_names = metadata["action"]
-
     X = data.dropna(axis=0)
+
+    states_mask = X.columns.str.startswith("state_")
+
     for i in range(len(X) - 1):
-        current_observation = X[observation_names].to_numpy()[i]
-        env.set_state_from_observation((0, current_observation))
+        current_state = X.loc[:, states_mask].to_numpy()[i]
+        env.env.set_numpy_state(current_state)
         current_action = X[action_names].to_numpy()[i]
-        env.step(int(current_action))
+        env.step(current_action)
 
     env.close()
 
@@ -71,7 +72,7 @@ def make_video(submission, agent, seed, epoch):
 @click.option("--submission", default="real_system", show_default=True,
               type=click.STRING,
               help="Model submission. Choose 'real_system' if you want to "
-              "use the real environment.")
+                   "use the real environment.")
 @click.option('--agent', default='random_shooting', show_default=True,
               type=click.STRING, help="Agent.")
 @click.option("--seed", default=0, show_default=True,

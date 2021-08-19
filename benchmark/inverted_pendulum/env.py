@@ -96,10 +96,29 @@ class Env(InvertedPendulumEnv):
         super(Env, self).set_state(state_dict['qpos'], state_dict['qvel'])
         self._elapsed_steps = state_dict['_elapsed_steps']
 
-    def set_state(self, full_state):
+    def set_state(self, state_dict):
         """For compatibility with other environments."""
-        self.__setstate__(full_state)
+        self.__setstate__(state_dict)
 
     def get_state(self):
         """For compatibility with other environments."""
         return self.__getstate__()
+
+    def get_numpy_state(self):
+        """Get the state numpy array from the environment."""
+        state_dict = self.get_state()
+        return np.r_[state_dict['qpos'], state_dict['qvel']]
+
+    def set_numpy_state(self, numpy_state):
+        """Set the state from a numpy array.
+
+        Note that the _elapsed_steps attribute is reset to 0.
+        """
+        self.state = numpy_state
+        self._elapsed_steps = 0
+        state_dict = {
+            'qpos': numpy_state[:2],
+            'qvel': numpy_state[2:],
+            '_elapsed_steps': self._elapsed_steps,
+        }
+        self.set_state(state_dict)

@@ -53,10 +53,25 @@ def test_rollout():
             return observation, reward, int(done), {}
 
         def set_state(self, full_state):
-            self._elapsed_steps, self.state = full_state
+            self._elapsed_steps = full_state['_elapsed_steps']
+            self.state = np.r_[full_state['qpos'], full_state['qvel']]
 
         def get_state(self):
-            return self._elapsed_steps, self.state
+            state = self.state
+            state_dict = {
+                'qpos': state[:2],
+                'qvel': state[2:],
+                '_elapsed_steps': self._elapsed_steps,
+            }
+            return state_dict
+
+        def get_numpy_state(self):
+            state_dict = self.get_state()
+            return np.r_[state_dict['qpos'], state_dict['qvel']]
+
+        def set_numpy_state(self, state):
+            self.state = state
+            self._elapsed_steps = 0
 
     class CyclicAgent:
         def __init__(self, actions=np.array([0, 1, 2])):

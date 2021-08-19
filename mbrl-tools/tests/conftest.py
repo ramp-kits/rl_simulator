@@ -16,7 +16,7 @@ def create_random_trace():
         env = system_env_object()
         env.seed(0)
         env.reset()
-        n_states = len(env.get_state()[1])
+        n_states = len(env.get_numpy_state())
 
         trace = rollout(system_env=env, n_action_features=n_action_features,
                         epoch=0, min_epoch_steps=10, agent=None)

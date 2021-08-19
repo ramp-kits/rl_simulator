@@ -136,7 +136,7 @@ def rollout(system_env, n_action_features,
 
     while epoch_step < min_epoch_steps:
         observation = system_env.reset()
-        _, state = system_env.get_state()
+        state = system_env.get_numpy_state()
 
         rewards = []
         done = 0
@@ -160,7 +160,7 @@ def rollout(system_env, n_action_features,
             # update observation
             episode_step += 1
             observation = new_observation
-            _, state = system_env.get_state()
+            state = system_env.get_numpy_state()
 
         # save last observation before a reset
         n_nans = n_action_features + 1  # NaNs for actions and reward
@@ -224,7 +224,7 @@ def train_test_split(output_dir='data', trace_path='trace.csv',
 
     train_trace_df.to_csv(os.path.join(output_dir, 'X_train.csv'))
     test_trace_df.to_csv(os.path.join(output_dir, 'X_test.csv'))
-    
+
 
 def get_seed_dirs(submission, agent, verbose=False):
     """Return the list of seed folders."""
@@ -237,7 +237,7 @@ def get_seed_dirs(submission, agent, verbose=False):
 
 def get_trace_df(seed_dir, verbose=False):
     """Reading and assembling trace files.
-    
+
     Unavailable files are silently ignored
 
     Parameters
@@ -248,7 +248,7 @@ def get_trace_df(seed_dir, verbose=False):
         if true, unloadable traces are printed
     Returns
     -------
-    pandas DataFrame (not ordered by epoch id)    
+    pandas DataFrame (not ordered by epoch id)
     """
     metadata_path = os.path.join('data', 'metadata.json')
     metadata = get_metadata_dictionary(metadata_path)

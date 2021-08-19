@@ -1,4 +1,5 @@
 import os
+import sys
 
 import click
 
@@ -89,7 +90,7 @@ def mbrl_run(agent_name, submission,
     # replay from the collected traces.
     # get the number of states
     system_env.reset()
-    n_states = len(system_env.get_state()[1])
+    n_states = len(system_env.get_numpy_state())
 
     trace_header = (
         observation_names + action_names + reward_name +
