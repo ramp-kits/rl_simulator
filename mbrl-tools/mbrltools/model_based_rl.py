@@ -178,7 +178,7 @@ def mbrl_run(agent_name, submission,
               type=click.STRING, help="Which model environment module to use. The "
               " default is to use the model_env module based on pandas. For faster "
               " computations use the numpy_model_env one.")
-@click.option("--seed", default=0, show_default=True,
+@click.option("--seed", default=99999, show_default=True,
               help="Seed of the random number generator. Only the numpy and "
               "pytorch global random generators are seeded.")
 @click.option("--partial-fit", default=False, show_default=True,
