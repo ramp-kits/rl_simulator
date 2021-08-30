@@ -32,6 +32,8 @@ def make_model_env_class(system_env_object):
         strategy. See the docstring of the workflow step method for the
         description of the history.
 
+        The ModelEnv must inherit from gym.core.Env to pass stable-baselines3 check.
+
         Parameters
         ----------
         submission_path : string
@@ -85,6 +87,11 @@ def make_model_env_class(system_env_object):
             self._get_column_names(metadata)
 
             self.trained_model = None
+
+            # for short rollouts performed with the model from real
+            # observations
+            self.dynamic_reset = False
+            self.real_states_history = []
 
             self._max_episode_steps = self.system_env.max_episode_steps
             self._elapsed_steps = 0
@@ -205,13 +212,18 @@ def make_model_env_class(system_env_object):
             Returns
             -------
             observation : numpy array, shape (n_observations,)
-                The passed observation if not None or a new observation.
+                New observation from the real system reset method or one of the
+                historical observation if dynamic_reset is True.
             """
-            observation = self.system_env.reset()
+            if self.dynamic_reset:
+                observation = self.real_states_history[
+                    self.np_random.choice(len(self.real_states_history))]
+            else:
+                observation = self.system_env.reset()
+
             self.add_observations_to_history(
                 observation.reshape(1, -1), np.array([[1]]))
             self._elapsed_steps = 0
-
             return observation
 
         def _workflow_step(self, history, seed=None):
@@ -242,8 +254,6 @@ def make_model_env_class(system_env_object):
             The history of the environment is used by the model for the
             dynamics prediction and updated at each step with the given action
             and returned observations.
-            Note that done is returned for compatibility but is always set to
-            0 as we do not consider early terminations when using the model.
 
             Parameters
             ----------
@@ -265,7 +275,7 @@ def make_model_env_class(system_env_object):
                 observations.
 
             done : numpy array, shape (n_samples)
-                An array of zeros is always returned.
+                Whether the end of the episode is reached or not.
 
             info : dict
                 Empty dict, used for compatibility with AI Gym API.
@@ -296,7 +306,6 @@ def make_model_env_class(system_env_object):
             self._elapsed_steps += 1
 
             rewards = self.reward_func(np.concatenate((observations, actions), axis=1))
-            done = np.zeros((n_samples, 1))
 
             self.add_observations_to_history(
                 observations, np.zeros((n_samples, 1)))
@@ -311,7 +320,7 @@ def make_model_env_class(system_env_object):
                 # for compatibility with stable baselines 3
                 observations = observations.ravel()
                 rewards = float(rewards)
-                done = bool(0)
+                done = bool(done)
 
             return observations, rewards, done, {}
 

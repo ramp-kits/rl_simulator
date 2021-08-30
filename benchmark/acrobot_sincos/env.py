@@ -19,6 +19,9 @@ class Env(AcrobotEnv):
         self.max_episode_steps = max_episode_steps
         super(Env, self).__init__()
 
+        self.dynamic_reset = False
+        self.real_states_history = []
+
     def seed(self, seed=None):
         """Same as parent method but passing a RandomState instance is allowed.
         """
@@ -27,9 +30,15 @@ class Env(AcrobotEnv):
 
     def reset(self):
         """Same as parent method but resetting the number of elapsed steps."""
-        observations = super(Env, self).reset()
-        self._elapsed_steps = 0
-        return observations
+        if self.dynamic_reset:
+            observations = self.real_states_history[
+                self.np_random.choice(len(self.real_states_history))]
+            self._elapsed_steps = 0
+            return observations
+        else:
+            observations = super(Env, self).reset()
+            self._elapsed_steps = 0
+            return observations
 
     def step(self, action):
         """Same as parent method but different reward.

@@ -82,29 +82,35 @@ def make_model_env_class(system_env_object):
 
             self.trained_model = None
 
+            # for short rollouts performed with the model from real
+            # observations
+            self.dynamic_reset = False
+            self.real_states_history = []
+
+            self._max_episode_steps = system_env.max_episode_steps
+            self._elapsed_steps = 0
+
         def reset(self):
             """Reset method of the environment.
 
-            The history of the model is also reset.
-
             Returns
             -------
-            observations : numpy array, shape (n_observations,)
-                The passed observation if not None or a new observation.
+            observation : numpy array, shape (n_observations,)
+                New observation from the real system reset method or one of the
+                historical observation if dynamic_reset is True.
             """
-            observations = super(ModelEnv, self).reset()
-            self.prev_observations = observations.reshape(1, -1)
+            if self.dynamic_reset:
+                observations = self.real_states_history[
+                    self.np_random.choice(len(self.real_states_history))]
+            else:
+                observations = super(ModelEnv, self).reset()
 
+            self.prev_observations = observations.reshape(1, -1)
+            self._elapsed_steps = 0
             return observations
 
         def step(self, actions):
             """Step function of the model environment.
-
-            The history of the environment is used by the model for the
-            dynamics prediction and updated at each step with the given action
-            and returned observations.
-            Note that done is returned for compatibility but is always set to
-            0 as we do not consider early terminations when using the model.
 
             Parameters
             ----------
@@ -126,7 +132,7 @@ def make_model_env_class(system_env_object):
                 observations.
 
             dones : numpy array, shape (n_samples)
-                An array of zeros is always returned.
+                Whether the end of the episode is reached or not.
 
             info : dict
                 Empty dict, used for compatibility with AI Gym API.
@@ -148,13 +154,20 @@ def make_model_env_class(system_env_object):
             model_input = np.concatenate(
                 (self.prev_observations, actions, restarts), axis=1)
             observations = self.workflow_step(self.trained_model, model_input)
+            observations = np.clip(
+                observations,
+                self.observation_space.low,
+                self.observation_space.high)
             rewards = self.reward_func(np.concatenate((observations, actions), axis=1))
+            self._elapsed_steps += 1
 
             self.prev_observations = observations
 
-            # we do not terminate early when using the models and thus always
-            # return 0 for the done variable
-            dones = np.zeros(n_samples)
+            if (self._max_episode_steps and
+                    self._elapsed_steps == self._max_episode_steps):
+                dones = np.ones((n_samples, 1)).astype(bool)
+            else:
+                dones = np.zeros(n_samples).astype(bool)
 
             return observations, rewards, dones, {}
 

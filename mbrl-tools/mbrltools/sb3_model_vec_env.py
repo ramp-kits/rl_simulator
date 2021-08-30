@@ -59,12 +59,10 @@ def make_model_env_class(system_env_object):
 
             self.num_envs = num_envs
 
-            # we create an instance of the system_env class and access its
-            # attribute using a __getattr__ method defined below.
-            # we do it like this because for some envs (e.g. mujoco envs)
-            # calling super.__init__ would call self.step and thus use the step
-            # of this class instead of the step of the mujoco env, leading to
-            # an error.
+            # get needed attributes from parent class. we create an instance
+            # because for mujoco env calling super.__init__ would call
+            # self.step and thus use the step of this class instead of the step
+            # of the mujoco env
             self.system_env = system_env_object()
             self.observation_space = self.system_env.observation_space
             self.action_space = self.system_env.action_space
@@ -86,6 +84,11 @@ def make_model_env_class(system_env_object):
             self._get_column_names(metadata)
 
             self.trained_model = None
+
+            # for short rollouts performed with the model from real
+            # observations
+            self.dynamic_reset = False
+            self.real_states_history = []
 
             self._max_episode_steps = self.system_env.max_episode_steps
             self._elapsed_steps = 0
@@ -208,8 +211,14 @@ def make_model_env_class(system_env_object):
             observation : numpy array, shape (n_observations,)
                 The passed observation if not None or a new observation.
             """
-            observations = np.array([
-                self.system_env.reset() for _ in range(self.num_envs)])
+            if self.dynamic_reset:
+                observations = self.real_states_history[
+                    self.np_random.choice(
+                        len(self.real_states_history),
+                        size=self.num_envs)]
+            else:
+                observations = np.array([
+                    self.system_env.reset() for _ in range(self.num_envs)])
 
             self.add_observations_to_history(
                 observations, np.ones((self.num_envs, 1)))

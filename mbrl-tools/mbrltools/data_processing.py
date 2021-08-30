@@ -6,6 +6,12 @@ import pathlib
 import pandas as pd
 import numpy as np
 
+import collections
+
+Experience = collections.namedtuple(
+    'Experience',
+    field_names=['state', 'action', 'reward', 'done', 'new_state'])
+
 
 def get_metadata_dictionary(metadata):
     """Get metadata dictionary.
@@ -152,6 +158,13 @@ def rollout(system_env, n_action_features,
                 action = agent.act(observation, restart)
             new_observation, reward, done, _ = system_env.step(action)
             rewards.append(reward)
+
+            if hasattr(agent, 'exp_buffer'):
+                # add real data to the experience buffer so that the
+                # agent can be trained with these data
+                agent.exp_buffer.append(
+                    Experience(
+                        observation, action, reward, 0, new_observation))
 
             trace_step = np.hstack(
                 (observation, action, reward, restart, epoch, state))
