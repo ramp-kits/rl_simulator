@@ -117,7 +117,7 @@ def test_step(monkeypatch):
     # change workflow step and n_burn_in
     model_env.workflow_step = _workflow_step
     model_env.n_burn_in = 3  # set n_burn_in so that we have the full history
-    model_env.model = None  # set model to None as needed but not used
+    model_env.trained_model = None  # set model to None as needed but not used
     actions = np.array([0, 1])
 
     observation = model_env.reset()

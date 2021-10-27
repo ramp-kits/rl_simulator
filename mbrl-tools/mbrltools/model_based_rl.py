@@ -1,5 +1,4 @@
 import os
-import sys
 
 import click
 
@@ -16,7 +15,7 @@ from .data_processing import rollout
 def mbrl_run(agent_name, submission,
              n_epochs, min_epoch_steps, min_random_steps,
              episodic_update, initial_trace, model_env,
-             seed, partial_fit=False, problem_name=None):
+             seed, partial_fit=False, save_model=True, problem_name=None):
     """Main script of model based RL loop.
 
     The problem_name argument is used for the purpose of testing.
@@ -78,7 +77,7 @@ def mbrl_run(agent_name, submission,
         ModelEnv = make_model_env_class(system_env_object)
         model_env = ModelEnv(
             submission_path, problem_module, reward_func,
-            metadata, output_dir, partial_fit, seed=None)
+            metadata, output_dir, partial_fit, save_model, seed=None)
 
     # retrieving feature names
     observation_names = metadata["observation"]
@@ -183,13 +182,15 @@ def mbrl_run(agent_name, submission,
               "pytorch global random generators are seeded.")
 @click.option("--partial-fit", default=False, show_default=True,
               help="If we want to pass the model from the previous epoch.")
+@click.option("--save-model", default=True, show_default=True,
+              help="Whether to save the trained_model.pkl at each epoch.")
 def mbrl_run_command(agent_name, submission,
                      n_epochs, min_epoch_steps, min_random_steps,
                      episodic_update, initial_trace, model_env,
-                     seed, partial_fit):
+                     seed, partial_fit, save_model):
     return mbrl_run(
         agent_name, submission, n_epochs, min_epoch_steps, min_random_steps,
-        episodic_update, initial_trace, model_env, seed, partial_fit,
+        episodic_update, initial_trace, model_env, seed, partial_fit, save_model,
     )
 
 

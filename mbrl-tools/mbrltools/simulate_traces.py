@@ -108,7 +108,7 @@ def simulate_command(data_label, submission, n_traces, n_samples,
             train_is, _ = fold
             trained_workflow = problem.workflow.train_submission(
                 submission_dir, X_train, y_train, train_is=train_is)
-        model_env.model = trained_workflow
+        model_env.trained_model = trained_workflow
 
         if is_train:
             train_is, _ = fold
