@@ -47,12 +47,14 @@ def test_reset(monkeypatch):
         submission_path=None, problem_module=problem, reward_func=None,
         metadata=problem.metadata, output_dir=None, seed=seed)
     model_env_observation = model_env.reset()
-    assert_array_almost_equal(acrobot_observation, model_env_observation)
+    assert_array_almost_equal(
+        acrobot_observation, model_env_observation.ravel())
 
     # check that history was correctly set
     history = model_env.history.to_numpy()
     assert_array_almost_equal(
-        history, np.r_[model_env_observation, np.nan, 1].reshape(1, -1))
+        history,
+        np.r_[model_env_observation.ravel(), np.nan, 1].reshape(1, -1))
 
 
 def test_add_action_and_add_observations_to_history(monkeypatch):
@@ -116,6 +118,10 @@ def test_step(monkeypatch):
     model_env = ModelEnv(
         submission_path=None, problem_module=problem, reward_func=_reward_func,
         metadata=metadata, output_dir=None, seed=seed)
+    # overwrite the observation limits for the purpose of the test
+    model_env.observation_space.low = np.array([-np.inf] * 4)
+    model_env.observation_space.high = np.array([np.inf] * 4)
+
     # change workflow step and n_burn_in
     model_env.workflow_step = _workflow_step
     model_env.n_burn_in = 3  # set n_burn_in so that we have the full history

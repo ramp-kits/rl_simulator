@@ -142,9 +142,7 @@ def test_agent_with_true_dynamics(monkeypatch):
     # this is to check that we can test the agent with the true dynamics
     monkeypatch.chdir(small_acrobot_dir_path)
     monkeypatch.syspath_prepend(small_acrobot_dir_path)
-    import problem
     from env import Env
-    from reward_function import reward_func
     from agents.random_shooting import Agent
 
     agent_env = Env()
@@ -202,6 +200,10 @@ def test_model_based_agent_custom(monkeypatch, tmp_path, create_random_trace):
         ModelEnv = make_model_env_class(Env)
         model_env = ModelEnv(
             submission_path, problem, reward_func, metadata, tmp_path)
+        # overwrite the observation limits for the purpose of the test
+        model_env.observation_space.low = np.array([-np.inf] * 4)
+        model_env.observation_space.high = np.array([np.inf] * 4)
+
         model_env.train_model(epoch=0)
         dummy_agent = DummyAgent(
             model_env, None, random_action=random_action)
