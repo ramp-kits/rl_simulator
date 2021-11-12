@@ -7,6 +7,7 @@ import pandas as pd
 import torch
 
 from rampwf.utils.importing import import_module_from_source
+from rampwf.utils import pickle_trained_model
 
 from .data_processing import get_metadata_dictionary
 from .data_processing import rollout
@@ -15,7 +16,8 @@ from .data_processing import rollout
 def mbrl_run(agent_name, submission,
              n_epochs, min_epoch_steps, min_random_steps,
              episodic_update, initial_trace, model_env,
-             seed, partial_fit=False, save_model=True, problem_name=None):
+             seed, partial_fit=False, save_model=True, save_agent=True,
+             problem_name=None):
     """Main script of model based RL loop.
 
     The problem_name argument is used for the purpose of testing.
@@ -142,6 +144,11 @@ def mbrl_run(agent_name, submission,
         if epoch <= n_epochs - 2 and hasattr(model_env, 'train_model'):
             model_env.train_model(epoch=epoch)
 
+        if save_agent:
+            pickle_trained_model(
+                epoch_output_dir, agent,
+                trained_model_name='trained_agent.pkl', is_silent=False)
+
 
 @click.command()
 @click.option('--agent-name', default='random_shooting', show_default=True,
@@ -184,13 +191,16 @@ def mbrl_run(agent_name, submission,
               help="If we want to pass the model from the previous epoch.")
 @click.option("--save-model", default=True, show_default=True,
               help="Whether to save the trained_model.pkl at each epoch.")
+@click.option("--save-agent", default=True, show_default=True,
+              help="Whether to save the trained agent at each epoch.")
 def mbrl_run_command(agent_name, submission,
                      n_epochs, min_epoch_steps, min_random_steps,
                      episodic_update, initial_trace, model_env,
-                     seed, partial_fit, save_model):
+                     seed, partial_fit, save_model, save_agent):
     return mbrl_run(
         agent_name, submission, n_epochs, min_epoch_steps, min_random_steps,
         episodic_update, initial_trace, model_env, seed, partial_fit, save_model,
+        save_agent,
     )
 
 
