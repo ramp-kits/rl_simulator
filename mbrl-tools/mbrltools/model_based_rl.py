@@ -7,14 +7,14 @@ import numpy as np
 import pandas as pd
 import torch
 
+from stable_baselines3.common.vec_env import VecMonitor
+
 from rampwf.utils.importing import import_module_from_source
 from rampwf.utils import pickle_trained_model
 from rampwf.utils import unpickle_trained_model
 
 from .data_processing import get_metadata_dictionary
 from .data_processing import rollout
-
-from stable_baselines3.common.vec_env import VecMonitor
 
 
 def mbrl_run(agent_name, submission,
@@ -25,10 +25,21 @@ def mbrl_run(agent_name, submission,
              seed=99999, partial_fit=False,
              epoch_resume=None,
              save_model=True, save_agent=True,
+             hyperopt=False, config=None,
              problem_name=None):
     """Main script of model based RL loop.
 
-    The problem_name argument is used for the purpose of testing.
+    The parameters not defined here are defined in the mbrl_run_command.
+    Parameters
+    ----------
+    problem_name : string
+        The problem module name without '.py'.
+        Used for testing purpose.
+    hyperopt : bool
+        Whether to run mbrl_run in hyperopt mode for the agent with the given
+        submission.
+    config: dict
+        If hyperopt, config to pass to the agent.
     """
     np.random.seed(seed)
     if seed is not None:
@@ -80,11 +91,19 @@ def mbrl_run(agent_name, submission,
     metadata = get_metadata_dictionary(metadata_path)
 
     # create a directory to store the results
-    output_dir = os.path.join(
-        'submissions', submission, 'mbrl_outputs', data_label, agent_name,
-        f'seed_{seed}')
+    if hyperopt:
+        from ray import tune
+
+        output_dir = os.path.join(
+            'submissions', submission, 'mbrl_outputs', data_label, agent_name,
+            'hyperopt', tune.get_trial_id(), f'seed_{seed}')
+    else:
+        output_dir = os.path.join(
+            'submissions', submission, 'mbrl_outputs', data_label, agent_name,
+            f'seed_{seed}')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
     # model
     if submission == 'real_system':
         model_env = system_env
@@ -178,7 +197,8 @@ def mbrl_run(agent_name, submission,
                                  eval_model_env=eval_model_env,
                                  planning_env=planning_env,
                                  metadata=metadata,
-                                 epoch=epoch_start)
+                                 epoch=epoch_start,
+                                 config=config)
 
         elif os.path.exists(os.path.join(epoch_output_dir, 'trace.csv')):
             warnings.warn(
@@ -192,7 +212,8 @@ def mbrl_run(agent_name, submission,
                                  eval_model_env=eval_model_env,
                                  planning_env=planning_env,
                                  metadata=metadata,
-                                 epoch=epoch_start)
+                                 epoch=epoch_start,
+                                 config=config)
         else:
             raise ValueError(
                 f'Cannot resume from epoch {epoch_resume} as there is no agent nor '
@@ -208,7 +229,8 @@ def mbrl_run(agent_name, submission,
                              eval_model_env=eval_model_env,
                              planning_env=planning_env,
                              metadata=metadata,
-                             epoch=epoch_start)
+                             epoch=epoch_start,
+                             config=config)
 
     # counter for the total number of steps, used for tensorboard.
     # the logging of metrics for tensorboard is done at the end of each episode and the

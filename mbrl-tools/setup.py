@@ -24,7 +24,8 @@ setuptools.setup(
         'console_scripts': [
             'mbrl-run = mbrltools.model_based_rl:mbrl_run_command',
             'mbrl-simulate = mbrltools.simulate_traces:simulate_command',
-            'make-video = mbrltools.make_video:make_video_command'
+            'make-video = mbrltools.make_video:make_video_command',
+            'mbrl-hyperopt = mbrltools.model_based_rl_hyperopt:mbrl_hyperopt_command',
         ],
     },
     python_requires='>=3.6',

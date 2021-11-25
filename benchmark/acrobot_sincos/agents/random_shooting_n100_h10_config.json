@@ -1,0 +1,3 @@
+{
+    "PLANNING_HORIZON": "tune.grid_search([5, 10])"
+}

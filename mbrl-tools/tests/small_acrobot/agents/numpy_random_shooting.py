@@ -40,7 +40,8 @@ class Agent:
                  planning_env=None,
                  metadata=None, epoch=0,
                  random_action=False,
-                 seed=None):
+                 seed=None,
+                 config=None):
 
         self.seed(seed)
         self.output_dir = output_dir

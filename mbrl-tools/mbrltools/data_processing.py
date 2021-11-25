@@ -287,6 +287,15 @@ def get_seed_dirs(submission, agent, verbose=False):
     return seed_dirs
 
 
+def get_seed_dirs_hyperopt(submission, agent, extra='', verbose=False):
+    """Return the list of seed folders."""
+    path = pathlib.Path('submissions') / submission / 'mbrl_outputs' / agent / extra
+    seed_dirs = list(path.glob('seed*'))
+    if len(seed_dirs) == 0 and verbose:
+        print(f'{path} not found or empty')
+    return seed_dirs
+
+
 def get_trace_df(seed_dir, verbose=False):
     """Reading and assembling trace files.
 
