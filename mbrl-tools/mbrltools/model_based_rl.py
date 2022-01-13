@@ -8,6 +8,7 @@ import torch
 
 from rampwf.utils.importing import import_module_from_source
 from rampwf.utils import pickle_trained_model
+from rampwf.utils import unpickle_trained_model
 
 from .data_processing import get_metadata_dictionary
 from .data_processing import rollout
@@ -16,8 +17,9 @@ from stable_baselines3.common.vec_env import VecMonitor
 
 
 def mbrl_run(agent_name, submission,
-             n_epochs, min_epoch_steps, min_random_steps,
-             episodic_update, initial_trace, model_env_module, num_envs=1,
+             n_epochs, min_epoch_steps, min_random_steps, n_epoch_episodes,
+             episodic_update, initial_trace, initial_model, data_label,
+             model_env_module, num_envs=1,
              seed=99999, partial_fit=False, save_model=True, save_agent=True,
              problem_name=None):
     """Main script of model based RL loop.
@@ -65,7 +67,10 @@ def mbrl_run(agent_name, submission,
 
     # create a directory to store the results
     output_dir = os.path.join(
-        'submissions', submission, 'mbrl_outputs', agent_name, f'seed_{seed}')
+        'submissions', submission, 'mbrl_outputs', data_label, agent_name,
+        f'seed_{seed}')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     # model
     if submission == 'real_system':
@@ -132,7 +137,7 @@ def mbrl_run(agent_name, submission,
 
         # no need to train if the model environment is the real environment
         if hasattr(model_env, 'train_model'):
-            model_env.train_model(0)
+            model_env.train_model(epoch=0)
 
         epoch_start = 1
         agent = agent_object(model_env, output_dir=output_dir,
@@ -142,6 +147,27 @@ def mbrl_run(agent_name, submission,
                              planning_env=planning_env,
                              metadata=metadata,
                              epoch=epoch_start)
+
+    if initial_model:
+        # epoch 0 is the initial model
+        print('Load initial model and pass it to the model env')
+        model_dir = os.path.join(
+            'submissions', submission, 'training_output',
+            data_label, 'fold_0')
+        trained_model = unpickle_trained_model(
+            model_dir, 'trained_model.pkl', is_silent=False)
+
+        model_env.model = trained_model
+
+        epoch_start = 1
+        agent = agent_object(model_env, output_dir=output_dir,
+                             seed=None,
+                             eval_env=system_env_object(),
+                             eval_model_env=eval_model_env,
+                             planning_env=planning_env,
+                             metadata=metadata,
+                             epoch=epoch_start)
+
     else:
         # random agent
         epoch_start = 0
@@ -171,6 +197,7 @@ def mbrl_run(agent_name, submission,
         trace = rollout(
             system_env, len(action_names),
             epoch=epoch, min_epoch_steps=min_rollout_steps,
+            n_episodes=n_epoch_episodes,
             agent=agent, episodic_update=episodic_update)
 
         # save new trace to disk
@@ -223,6 +250,10 @@ def mbrl_run(agent_name, submission,
               help="The minimum number of steps done at the first epoch"
               " with the random policy if initial-trace is set to False. "
               "If None then it is equal to min-epoch-steps.")
+@click.option("--n-epoch-episodes", default=None, show_default=True,
+              type=click.INT,
+              help="The number of episodes to run at each epoch. Takes the "
+              "priority over min_epoch_steps if set.")
 @click.option("--episodic-update", default=False, show_default=True,
               type=click.BOOL,
               help="Whether to update the model after each episode such that "
@@ -232,6 +263,14 @@ def mbrl_run(agent_name, submission,
               "If True, the initial trace should be stored under trace.csv in "
               "submissions/<submission>/mbrl_outputs/<agent_name>/seed_<seed>/"
               "epoch_0/.")
+@click.option("--initial-model", default=False, show_default=True,
+              type=click.BOOL, help="Whether an initial pickled model is "
+              "available. If True, the initial model should be stored under "
+              "submissions/<submission>/'training_output'/<data_label>/"
+              "'fold_0'/trained_model.pkl")
+@click.option("--data-label", default="", show_default=True, type=click.STRING,
+              help="For pure batch setting, data label on which the initial "
+              "model was trained.")
 @click.option("--model-env-module", default='model_env', show_default=True,
               type=click.STRING, help="Which model environment module to use. The "
               " default is to use the model_env module based on pandas. For faster "
@@ -249,12 +288,14 @@ def mbrl_run(agent_name, submission,
 @click.option("--save-agent", default=True, show_default=True,
               help="Whether to save the trained agent at each epoch.")
 def mbrl_run_command(agent_name, submission,
-                     n_epochs, min_epoch_steps, min_random_steps,
-                     episodic_update, initial_trace, model_env_module, num_envs,
+                     n_epochs, min_epoch_steps, min_random_steps, n_epoch_episodes,
+                     episodic_update, initial_trace, initial_model, data_label,
+                     model_env_module, num_envs,
                      seed, partial_fit, save_model, save_agent):
     return mbrl_run(
         agent_name, submission, n_epochs, min_epoch_steps, min_random_steps,
-        episodic_update, initial_trace, model_env_module, num_envs, seed, partial_fit,
+        n_epoch_episodes, episodic_update, initial_trace, initial_model, data_label,
+        model_env_module, num_envs, seed, partial_fit,
         save_model, save_agent,
     )
 

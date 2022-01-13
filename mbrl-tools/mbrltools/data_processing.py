@@ -105,7 +105,7 @@ def get_first_episodes(trace_path, metadata, n_episodes=None):
 
 
 def rollout(system_env, n_action_features,
-            epoch=0, min_epoch_steps=1000,
+            epoch=0, min_epoch_steps=1000, n_episodes=None,
             agent=None, episodic_update=False):
     """Perform a rollout on the environment using the agent.
 
@@ -122,6 +122,9 @@ def rollout(system_env, n_action_features,
     min_epoch_steps : int
         Minimum number of steps of the rollout. The rollout terminates on
         a complete episode
+    n_episodes : int
+        Number of episodes to run. Takes the priority over min_epoch_steps if
+        set.
     agent : object
         Agent. If not None, needs an act method.
         If None then system_env.action_space.sample is used.
@@ -136,11 +139,19 @@ def rollout(system_env, n_action_features,
     """
     print('Epoch', epoch)
 
+    if n_episodes is not None:
+        min_epoch_steps = np.inf
+    else:
+        n_episodes = np.inf
+
     # epoch trace data
     epoch_step = 0
     trace = []
+    n_done_episodes = 0
 
-    while epoch_step < min_epoch_steps:
+    while epoch_step < min_epoch_steps and n_done_episodes < n_episodes:
+        if hasattr(agent, 'reset'):
+            agent.reset()
         observation = system_env.reset()
         state = system_env.get_numpy_state()
 
@@ -182,6 +193,7 @@ def rollout(system_env, n_action_features,
         trace.append(last_obs)
 
         epoch_step += episode_step
+        n_done_episodes += 1
 
         print('Number of episode steps:', episode_step)
         print('Mean reward:', np.mean(rewards))
