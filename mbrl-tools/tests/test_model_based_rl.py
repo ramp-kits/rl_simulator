@@ -228,8 +228,9 @@ def test_numpy_model_env(monkeypatch, capsys):
         mbrl_run(
             agent_name, submission_name, n_epochs=2, min_epoch_steps=5,
             min_random_steps=5, n_epoch_episodes=None,
-            episodic_update=False, initial_trace=False,
-            initial_model=False, data_label="",
+            episodic_update=False, start_from_trace=False,
+            start_from_model=False, start_from_agent=False,
+            epoch_resume=None, data_label="",
             model_env_module=model_env_module,
             seed=0, problem_name=problem_name)
         captured.append(capsys.readouterr().out)

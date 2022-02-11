@@ -1,5 +1,6 @@
 import os
 import copy
+import warnings
 import click
 
 import numpy as np
@@ -17,10 +18,14 @@ from stable_baselines3.common.vec_env import VecMonitor
 
 
 def mbrl_run(agent_name, submission,
-             n_epochs, min_epoch_steps, min_random_steps, n_epoch_episodes,
-             episodic_update, initial_trace, initial_model, data_label,
-             model_env_module, num_envs=1,
-             seed=99999, partial_fit=False, save_model=True, save_agent=True,
+             n_epochs, min_epoch_steps, min_random_steps, n_epoch_episodes=None,
+             episodic_update=False,
+             data_label="",
+             model_env_module="model_env", num_envs=10,
+             seed=99999, partial_fit=False,
+             epoch_resume=None,
+             start_from_trace=False, start_from_model=False, start_from_agent=False,
+             save_model=True, save_agent=True,
              problem_name=None):
     """Main script of model based RL loop.
 
@@ -131,45 +136,62 @@ def mbrl_run(agent_name, submission,
         [restart_name] + ['epoch_id'] +
         [f'state_{i}' for i in range(n_states)])
 
-    if initial_trace:
-        # epoch 0 is the initial trace
-        print('Epoch 0: Initial trace.')
+    if epoch_resume is not None:
 
-        # no need to train if the model environment is the real environment
-        if hasattr(model_env, 'train_model'):
-            model_env.train_model(epoch=0)
+        if sum([start_from_model, start_from_agent, start_from_trace]) != 1:
+            raise ValueError(
+                'One and only one of start_from_model, start_from_agent or '
+                'start_from_trace can be True')
 
-        epoch_start = 1
-        agent = agent_object(model_env, output_dir=output_dir,
-                             seed=None,
-                             eval_env=system_env_object(),
-                             eval_model_env=eval_model_env,
-                             planning_env=planning_env,
-                             metadata=metadata,
-                             epoch=epoch_start)
+        epoch_resume = int(epoch_resume)
+        epoch_output_dir = os.path.join(output_dir, f'epoch_{epoch_resume}')
 
-    if initial_model:
-        # epoch 0 is the initial model
-        print('Load initial model and pass it to the model env')
-        model_dir = os.path.join(
-            'submissions', submission, 'training_output',
-            data_label, 'fold_0')
-        trained_model = unpickle_trained_model(
-            model_dir, 'trained_model.pkl', is_silent=False)
+        if start_from_agent:
+            agent = unpickle_trained_model(
+                epoch_output_dir, 'trained_agent.pkl', is_silent=False)
+            model_env = agent.env
 
-        model_env.model = trained_model
+            epoch_start = epoch_resume
 
-        epoch_start = 1
-        agent = agent_object(model_env, output_dir=output_dir,
-                             seed=None,
-                             eval_env=system_env_object(),
-                             eval_model_env=eval_model_env,
-                             planning_env=planning_env,
-                             metadata=metadata,
-                             epoch=epoch_start)
+        if start_from_model:
+            warnings.warn(
+                'The agent will be trained from scratch with the given model')
+
+            trained_model = unpickle_trained_model(
+                epoch_output_dir, 'trained_model.pkl', is_silent=False)
+
+            model_env.model = trained_model
+
+            epoch_start = epoch_resume
+            agent = agent_object(model_env, output_dir=output_dir,
+                                 seed=None,
+                                 eval_env=system_env_object(),
+                                 eval_model_env=eval_model_env,
+                                 planning_env=planning_env,
+                                 metadata=metadata,
+                                 epoch=epoch_start)
+
+        if start_from_trace:
+            warnings.warn(
+                'The model and agent will be trained from scratch from the past traces')
+            epoch_start = epoch_resume
+            model_env.train_model(epoch=epoch_start)
+
+            agent = agent_object(model_env, output_dir=output_dir,
+                                 seed=None,
+                                 eval_env=system_env_object(),
+                                 eval_model_env=eval_model_env,
+                                 planning_env=planning_env,
+                                 metadata=metadata,
+                                 epoch=epoch_start)
 
     else:
         # random agent
+        print('Using a random agent for the first epoch')
+        if start_from_agent or start_from_model or start_from_trace:
+            raise ValueError(
+                'If you want to start from an agent, model or past traces you need to '
+                'set epoch_resume')
         epoch_start = 0
         agent = agent_object(model_env, output_dir=output_dir,
                              random_action=True, seed=None,
@@ -211,6 +233,7 @@ def mbrl_run(agent_name, submission,
         # update model if it remains epochs to compute.
         if epoch <= n_epochs - 2 and hasattr(model_env, 'train_model'):
             model_env.train_model(epoch=epoch)
+            # XXX Would be better to have a train method in the agent that we call now
             if eval_model_env is not None:
                 if model_env_module == 'sb3_model_vec_env':
                     eval_model_env.venv.trained_model = copy.deepcopy(
@@ -258,19 +281,8 @@ def mbrl_run(agent_name, submission,
               type=click.BOOL,
               help="Whether to update the model after each episode such that "
               "one epoch is exaclty one episode.")
-@click.option("--initial-trace", default=False, show_default=True,
-              type=click.BOOL, help="Whether an initial trace is available. "
-              "If True, the initial trace should be stored under trace.csv in "
-              "submissions/<submission>/mbrl_outputs/<agent_name>/seed_<seed>/"
-              "epoch_0/.")
-@click.option("--initial-model", default=False, show_default=True,
-              type=click.BOOL, help="Whether an initial pickled model is "
-              "available. If True, the initial model should be stored under "
-              "submissions/<submission>/'training_output'/<data_label>/"
-              "'fold_0'/trained_model.pkl")
 @click.option("--data-label", default="", show_default=True, type=click.STRING,
-              help="For pure batch setting, data label on which the initial "
-              "model was trained.")
+              help="Data label when evaluating different initial trace.")
 @click.option("--model-env-module", default='model_env', show_default=True,
               type=click.STRING, help="Which model environment module to use. The "
               " default is to use the model_env module based on pandas. For faster "
@@ -283,20 +295,46 @@ def mbrl_run(agent_name, submission,
               "pytorch global random generators are seeded.")
 @click.option("--partial-fit", default=False, show_default=True,
               help="If we want to pass the model from the previous epoch.")
+@click.option("--epoch-resume", default=None, show_default=True,
+              type=click.INT,
+              help="If we want to resume training, the epoch from where "
+              "we resume training. The first epoch to be run will be epoch_resume + 1")
+@click.option("--start-from-trace", default=False, show_default=True,
+              type=click.BOOL, help="Whether to start from past traces when "
+              "epoch_resume is not None. Note that in this case the model and"
+              " the agent are trained from scratch from the past traces.")
+@click.option("--start-from-model", default=False, show_default=True,
+              type=click.BOOL, help="Whether to start from a pickled model when "
+              "epoch_resume is not None. If True, the model to be loaded should be "
+              "stored under trained_model.pkl in submissions/<submission>/mbrl_outputs/"
+              "<data_label>/<agent_name>/seed_<seed>/epoch_<epoch_resume>/. Note that "
+              "in this case the agent is trained from scratch from the given model.")
+@click.option("--start-from-agent", default=False, show_default=True,
+              type=click.BOOL, help="Whether to start from a pickled agent when "
+              "epoch_resume is not None. If True, the agent to be loaded should be "
+              "stored under trained_agent.pkl in submissions/<submission>/mbrl_outputs/"
+              "<data_label>/<agent_name>/seed_<seed>/epoch_<epoch_resume>/.")
 @click.option("--save-model", default=True, show_default=True,
               help="Whether to save the trained_model.pkl at each epoch.")
 @click.option("--save-agent", default=True, show_default=True,
               help="Whether to save the trained agent at each epoch.")
 def mbrl_run_command(agent_name, submission,
                      n_epochs, min_epoch_steps, min_random_steps, n_epoch_episodes,
-                     episodic_update, initial_trace, initial_model, data_label,
+                     episodic_update,
                      model_env_module, num_envs,
-                     seed, partial_fit, save_model, save_agent):
+                     data_label,
+                     seed, partial_fit, epoch_resume,
+                     start_from_trace, start_from_model, start_from_agent,
+                     save_model, save_agent):
     return mbrl_run(
-        agent_name, submission, n_epochs, min_epoch_steps, min_random_steps,
-        n_epoch_episodes, episodic_update, initial_trace, initial_model, data_label,
-        model_env_module, num_envs, seed, partial_fit,
-        save_model, save_agent,
+        agent_name, submission,
+        n_epochs, min_epoch_steps, min_random_steps, n_epoch_episodes,
+        episodic_update,
+        model_env_module, num_envs,
+        data_label,
+        seed, partial_fit, epoch_resume,
+        start_from_trace, start_from_model, start_from_agent,
+        save_model, save_agent
     )
 
 
