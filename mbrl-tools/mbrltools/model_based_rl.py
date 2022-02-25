@@ -60,6 +60,15 @@ def mbrl_run(agent_name, submission,
         reward_module_path, 'reward_function')
     reward_func = reward_module.reward_func
 
+    # termination function used to reset the model env
+    try:
+        termination_module_path = 'termination_function.py'
+        termination_module = import_module_from_source(
+            termination_module_path, 'termination_function')
+        termination_func = termination_module.termination_func
+    except Exception:
+        termination_func = None
+
     # agent
     agent_module_path = os.path.join('agents', agent_name + '.py')
     agent_module = import_module_from_source(agent_module_path, agent_name)
@@ -95,28 +104,31 @@ def mbrl_run(agent_name, submission,
         if model_env_module == 'sb3_model_vec_env':
             model_env = ModelEnv(
                 submission_path, problem_module, reward_func,
-                metadata, output_dir, partial_fit, save_model, seed=None,
-                num_envs=num_envs)
+                metadata, output_dir, partial_fit, save_model,
+                termination_func=termination_func, seed=None, num_envs=num_envs)
             model_env = VecMonitor(model_env)
             eval_model_env = ModelEnv(
                 submission_path, problem_module, reward_func,
-                metadata, output_dir, partial_fit, save_model, seed=None,
-                num_envs=1)
+                metadata, output_dir, partial_fit, save_model,
+                termination_func=termination_func, seed=None, num_envs=1)
             eval_model_env = VecMonitor(eval_model_env)
             planning_env = ModelEnv(
                 submission_path, problem_module, reward_func,
-                metadata, output_dir, partial_fit, save_model, seed=None,
-                num_envs=1)
+                metadata, output_dir, partial_fit, save_model,
+                termination_func=termination_func, seed=None, num_envs=1)
         else:
             model_env = ModelEnv(
                 submission_path, problem_module, reward_func,
-                metadata, output_dir, partial_fit, save_model, seed=None)
+                metadata, output_dir, partial_fit, save_model,
+                termination_func=termination_func, seed=None)
             eval_model_env = ModelEnv(
                 submission_path, problem_module, reward_func,
-                metadata, output_dir, partial_fit, save_model, seed=None)
+                metadata, output_dir, partial_fit, save_model,
+                termination_func=termination_func, seed=None)
             planning_env = ModelEnv(
                 submission_path, problem_module, reward_func,
-                metadata, output_dir, partial_fit, save_model, seed=None)
+                metadata, output_dir, partial_fit, save_model,
+                termination_func=termination_func, seed=None)
 
     # retrieving feature names
     observation_names = metadata["observation"]
@@ -133,7 +145,8 @@ def mbrl_run(agent_name, submission,
     trace_header = (
         observation_names + action_names + reward_name +
         [restart_name] + ['epoch_id'] +
-        [f'state_{i}' for i in range(n_states)])
+        [f'state_{i}' for i in range(n_states)]
+    )
 
     if epoch_resume is not None:
 

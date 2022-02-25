@@ -50,12 +50,16 @@ def make_model_env_class(system_env_object):
             model.
         seed : int
             Seed of the RNG used for this environment.
+        termination_func : function
+            Function taking as input observations and returning whether we should
+            terminate.
         """
 
         def __init__(self, submission_path, problem_module, reward_func,
                      metadata, output_dir, partial_fit=False, seed=None,
                      save_model=True,
-                     num_envs=1):
+                     num_envs=1,
+                     termination_func=None):
 
             self.num_envs = num_envs
 
@@ -70,6 +74,7 @@ def make_model_env_class(system_env_object):
 
             self.submission_path = submission_path
             self.reward_func = reward_func
+            self.termination_func = termination_func
             self.metadata = metadata
             self.output_dir = output_dir
             self.partial_fit = partial_fit
@@ -392,9 +397,16 @@ def make_model_env_class(system_env_object):
                 observations, np.zeros((n_samples, 1))
             )
 
+            if self.termination_func is not None:
+                done = self.termination_func(observations)
+            else:
+                done = np.zeros(n_samples).astype(bool)
+
             if (self._max_episode_steps and
                     self._elapsed_steps == self._max_episode_steps):
                 done = np.ones(n_samples).astype(bool)
+
+            if done.any():
                 infos = [{"terminal_observation": obs} for obs in observations]
                 observations = self.reset()
             else:

@@ -56,11 +56,14 @@ def make_model_env_class(system_env_object):
             If we want to pass the model from the previous epoch.
         save_model : bool
             Whether to save the trained model.
+        termination_func : function
+            Function taking as input observations and returning whether we should
+            terminate.
         """
 
         def __init__(self, submission_path, problem_module, reward_func,
                      metadata, output_dir, partial_fit=False, save_model=True,
-                     seed=None):
+                     termination_func=None, seed=None):
 
             # get needed attributes from parent class. we create an instance
             # because for mujoco env calling super.__init__ would call
@@ -73,6 +76,8 @@ def make_model_env_class(system_env_object):
 
             self.submission_path = submission_path
             self.reward_func = reward_func
+            self.termination_func = termination_func
+
             self.metadata = metadata
             self.output_dir = output_dir
             self.partial_fit = partial_fit
@@ -308,13 +313,17 @@ def make_model_env_class(system_env_object):
             rewards = self.reward_func(np.concatenate((observations, actions), axis=1))
 
             self.add_observations_to_history(
-                observations, np.zeros((n_samples, 1)))
+                observations, np.zeros((n_samples, 1))
+            )
+
+            if self.termination_func is not None:
+                done = self.termination_func(observations)
+            else:
+                done = np.zeros(n_samples).astype(bool)
 
             if (self._max_episode_steps and
                     self._elapsed_steps == self._max_episode_steps):
                 done = np.ones((n_samples, 1)).astype(bool)
-            else:
-                done = np.zeros(n_samples).astype(bool)
 
             if is_one_action_sample:
                 # for compatibility with stable baselines 3
@@ -376,6 +385,7 @@ def make_model_env_class(system_env_object):
             Sometimes the parent class, the system environment object,
             implements its own __getstate__ method and makes the copy of
             the ModelEnv object fail."""
+
             return self.__dict__.copy()
 
         def __setstate__(self, state):
