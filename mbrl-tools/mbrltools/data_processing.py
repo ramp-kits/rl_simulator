@@ -8,6 +8,8 @@ import numpy as np
 
 import collections
 
+from torch.utils.tensorboard import SummaryWriter
+
 Experience = collections.namedtuple(
     'Experience',
     field_names=['state', 'action', 'reward', 'done', 'new_state'])
@@ -106,7 +108,8 @@ def get_first_episodes(trace_path, metadata, n_episodes=None):
 
 def rollout(system_env, n_action_features,
             epoch=0, min_epoch_steps=1000, n_episodes=None,
-            agent=None, episodic_update=False):
+            agent=None, episodic_update=False,
+            tensorboard_path=None):
     """Perform a rollout on the environment using the agent.
 
     Parameters
@@ -131,6 +134,8 @@ def rollout(system_env, n_action_features,
     episodic_update : bool
         Whether to update the model after each episode, in which case one epoch
         is exaclty one episode.
+    tensorboard_path : string
+        Path to the tensorboard directory.
 
     Return
     ------
@@ -143,6 +148,11 @@ def rollout(system_env, n_action_features,
         min_epoch_steps = np.inf
     else:
         n_episodes = np.inf
+
+    if tensorboard_path is not None:
+        writer_rollout = SummaryWriter(
+            tensorboard_path,
+            flush_secs=1)
 
     # epoch trace data
     epoch_step = 0
@@ -203,6 +213,10 @@ def rollout(system_env, n_action_features,
         if episodic_update:
             # one epoch is exactly one episode
             break
+
+    if tensorboard_path is not None:
+        writer_rollout.add_scalar('Mean reward', float(np.mean(rewards)), epoch)
+        writer_rollout.add_scalar('Return', float(np.sum(rewards)), epoch)
 
     return trace
 

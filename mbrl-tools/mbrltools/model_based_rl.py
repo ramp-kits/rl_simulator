@@ -220,7 +220,8 @@ def mbrl_run(agent_name, submission,
             system_env, len(action_names),
             epoch=epoch, min_epoch_steps=min_rollout_steps,
             n_episodes=n_epoch_episodes,
-            agent=agent, episodic_update=episodic_update)
+            agent=agent, episodic_update=episodic_update,
+            tensorboard_path=os.path.join(output_dir, 'tensorboard'))
 
         # save new trace to disk
         epoch_output_dir = os.path.join(output_dir, f'epoch_{epoch}')
