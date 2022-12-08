@@ -14,7 +14,7 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         # constant prediction with value equal to 10
         n_samples = X_array.shape[0]
         types = ['norm']
-        means = np.full(shape=(n_samples, 1), fill_value=10)
+        means = np.full(shape=(n_samples, 1), fill_value=2)
         sigmas = np.zeros((n_samples, 1))
 
         params = np.concatenate((means, sigmas), axis=1)

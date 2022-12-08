@@ -1,5 +1,5 @@
 import os
-
+import copy
 import click
 
 import numpy as np
@@ -12,11 +12,13 @@ from rampwf.utils import pickle_trained_model
 from .data_processing import get_metadata_dictionary
 from .data_processing import rollout
 
+from stable_baselines3.common.vec_env import VecMonitor
+
 
 def mbrl_run(agent_name, submission,
              n_epochs, min_epoch_steps, min_random_steps,
-             episodic_update, initial_trace, model_env,
-             seed, partial_fit=False, save_model=True, save_agent=True,
+             episodic_update, initial_trace, model_env_module, num_envs=1,
+             seed=99999, partial_fit=False, save_model=True, save_agent=True,
              problem_name=None):
     """Main script of model based RL loop.
 
@@ -68,18 +70,44 @@ def mbrl_run(agent_name, submission,
     # model
     if submission == 'real_system':
         model_env = system_env
+        eval_model_env = None
+        planning_env = None
     else:
-        if model_env == 'model_env':
+        if model_env_module == 'model_env':
             from .model_env import make_model_env_class
-        elif model_env == 'numpy_model_env':
+        elif model_env_module == 'numpy_model_env':
             from .numpy_model_env import make_model_env_class
+        elif model_env_module == 'sb3_model_vec_env':
+            from .sb3_model_vec_env import make_model_env_class
         else:
             raise ValueError('The passed model_env is not supported.')
         submission_path = os.path.join('submissions', submission)
         ModelEnv = make_model_env_class(system_env_object)
-        model_env = ModelEnv(
-            submission_path, problem_module, reward_func,
-            metadata, output_dir, partial_fit, save_model, seed=None)
+        if model_env_module == 'sb3_model_vec_env':
+            model_env = ModelEnv(
+                submission_path, problem_module, reward_func,
+                metadata, output_dir, partial_fit, save_model, seed=None,
+                num_envs=num_envs)
+            model_env = VecMonitor(model_env)
+            eval_model_env = ModelEnv(
+                submission_path, problem_module, reward_func,
+                metadata, output_dir, partial_fit, save_model, seed=None,
+                num_envs=1)
+            eval_model_env = VecMonitor(eval_model_env)
+            planning_env = ModelEnv(
+                submission_path, problem_module, reward_func,
+                metadata, output_dir, partial_fit, save_model, seed=None,
+                num_envs=1)
+        else:
+            model_env = ModelEnv(
+                submission_path, problem_module, reward_func,
+                metadata, output_dir, partial_fit, save_model, seed=None)
+            eval_model_env = ModelEnv(
+                submission_path, problem_module, reward_func,
+                metadata, output_dir, partial_fit, save_model, seed=None)
+            planning_env = ModelEnv(
+                submission_path, problem_module, reward_func,
+                metadata, output_dir, partial_fit, save_model, seed=None)
 
     # retrieving feature names
     observation_names = metadata["observation"]
@@ -98,27 +126,40 @@ def mbrl_run(agent_name, submission,
         [restart_name] + ['epoch_id'] +
         [f'state_{i}' for i in range(n_states)])
 
-    epoch_output_dir = os.path.join(output_dir, 'epoch_0')
     if initial_trace:
         # epoch 0 is the initial trace
         print('Epoch 0: Initial trace.')
 
         # no need to train if the model environment is the real environment
         if hasattr(model_env, 'train_model'):
-            model_env.train_model()
+            model_env.train_model(0)
 
-        agent = agent_object(model_env, epoch_output_dir=epoch_output_dir,
-                             seed=None)
         epoch_start = 1
+        agent = agent_object(model_env, output_dir=output_dir,
+                             seed=None,
+                             eval_env=system_env_object(),
+                             eval_model_env=eval_model_env,
+                             planning_env=planning_env,
+                             metadata=metadata,
+                             epoch=epoch_start)
     else:
         # random agent
-        agent = agent_object(model_env, epoch_output_dir=epoch_output_dir,
-                             random_action=True, seed=None)
         epoch_start = 0
+        agent = agent_object(model_env, output_dir=output_dir,
+                             random_action=True, seed=None,
+                             eval_env=system_env_object(),
+                             eval_model_env=eval_model_env,
+                             planning_env=planning_env,
+                             metadata=metadata,
+                             epoch=epoch_start)
 
     for epoch in range(epoch_start, n_epochs):
         # use the agent on the real system, collect the trace to update the
         # model and update the agent using the updated model
+        epoch_output_dir = os.path.join(output_dir, f'epoch_{epoch}')
+        if not os.path.exists(epoch_output_dir):
+            os.makedirs(epoch_output_dir)
+        agent.epoch = epoch
 
         if epoch == 0:
             # random policy
@@ -143,6 +184,17 @@ def mbrl_run(agent_name, submission,
         # update model if it remains epochs to compute.
         if epoch <= n_epochs - 2 and hasattr(model_env, 'train_model'):
             model_env.train_model(epoch=epoch)
+            if eval_model_env is not None:
+                if model_env_module == 'sb3_model_vec_env':
+                    eval_model_env.venv.trained_model = copy.deepcopy(
+                        model_env.trained_model)
+                    planning_env.venv.trained_model = copy.deepcopy(
+                        model_env.trained_model)
+                else:
+                    eval_model_env.trained_model = copy.deepcopy(
+                        model_env.trained_model)
+                    planning_env.trained_model = copy.deepcopy(
+                        model_env.trained_model)
 
         if save_agent:
             pickle_trained_model(
@@ -180,10 +232,13 @@ def mbrl_run(agent_name, submission,
               "If True, the initial trace should be stored under trace.csv in "
               "submissions/<submission>/mbrl_outputs/<agent_name>/seed_<seed>/"
               "epoch_0/.")
-@click.option("--model-env", default='model_env', show_default=True,
+@click.option("--model-env-module", default='model_env', show_default=True,
               type=click.STRING, help="Which model environment module to use. The "
               " default is to use the model_env module based on pandas. For faster "
               " computations use the numpy_model_env one.")
+@click.option("--num-envs", default=10, show_default=True, type=click.INT,
+              help="The number of environments to consider for the sb3 compatible "
+              "vectorized model environment sb3_model_vec_env.")
 @click.option("--seed", default=99999, show_default=True,
               help="Seed of the random number generator. Only the numpy and "
               "pytorch global random generators are seeded.")
@@ -195,12 +250,12 @@ def mbrl_run(agent_name, submission,
               help="Whether to save the trained agent at each epoch.")
 def mbrl_run_command(agent_name, submission,
                      n_epochs, min_epoch_steps, min_random_steps,
-                     episodic_update, initial_trace, model_env,
+                     episodic_update, initial_trace, model_env_module, num_envs,
                      seed, partial_fit, save_model, save_agent):
     return mbrl_run(
         agent_name, submission, n_epochs, min_epoch_steps, min_random_steps,
-        episodic_update, initial_trace, model_env, seed, partial_fit, save_model,
-        save_agent,
+        episodic_update, initial_trace, model_env_module, num_envs, seed, partial_fit,
+        save_model, save_agent,
     )
 
 

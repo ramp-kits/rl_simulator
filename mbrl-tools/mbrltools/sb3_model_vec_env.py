@@ -2,13 +2,13 @@ import os
 
 import numpy as np
 import pandas as pd
-import rampwf
 
-from gym.spaces import Discrete
-from gym.core import Env
+import rampwf
 
 from .data_processing import read_data_with_metadata
 from .data_processing import preprocess_time
+
+from stable_baselines3.common.vec_env.base_vec_env import VecEnv
 
 
 def make_model_env_class(system_env_object):
@@ -25,7 +25,7 @@ def make_model_env_class(system_env_object):
         See docstring of the ModelEnv class for more details.
     """
 
-    class ModelEnv(Env):
+    class ModelEnv(VecEnv):
         """Open AI gym env.
 
         Environment associated to the learnt model of a model based RL
@@ -50,23 +50,24 @@ def make_model_env_class(system_env_object):
             model.
         seed : int
             Seed of the RNG used for this environment.
-        partial_fit : bool
-            If we want to pass the model from the previous epoch.
-        save_model : bool
-            Whether to save the trained model.
         """
 
         def __init__(self, submission_path, problem_module, reward_func,
-                     metadata, output_dir, partial_fit=False, save_model=True,
-                     seed=None):
+                     metadata, output_dir, partial_fit=False, seed=None,
+                     save_model=True,
+                     num_envs=1):
 
-            # get needed attributes from parent class. we create an instance
-            # because for mujoco env calling super.__init__ would call
-            # self.step and thus use the step of this class instead of the step
-            # of the mujoco env
+            self.num_envs = num_envs
+
+            # we create an instance of the system_env class and access its
+            # attribute using a __getattr__ method defined below.
+            # we do it like this because for some envs (e.g. mujoco envs)
+            # calling super.__init__ would call self.step and thus use the step
+            # of this class instead of the step of the mujoco env, leading to
+            # an error.
             self.system_env = system_env_object()
-            self.action_space = self.system_env.action_space
             self.observation_space = self.system_env.observation_space
+            self.action_space = self.system_env.action_space
             self.system_env.seed(seed)
 
             self.submission_path = submission_path
@@ -207,12 +208,14 @@ def make_model_env_class(system_env_object):
             observation : numpy array, shape (n_observations,)
                 The passed observation if not None or a new observation.
             """
-            observation = self.system_env.reset()
+            observations = np.array([
+                self.system_env.reset() for _ in range(self.num_envs)])
+
             self.add_observations_to_history(
-                observation.reshape(1, -1), np.array([[1]]))
+                observations, np.ones((self.num_envs, 1)))
             self._elapsed_steps = 0
 
-            return observation
+            return observations
 
         def _workflow_step(self, history, seed=None):
             """Compute step from history history.
@@ -235,85 +238,6 @@ def make_model_env_class(system_env_object):
             observations = self.workflow_step(
                 self.trained_model, history, random_state=seed)
             return observations
-
-        def step(self, actions):
-            """Step function of the model environment.
-
-            The history of the environment is used by the model for the
-            dynamics prediction and updated at each step with the given action
-            and returned observations.
-            Note that done is returned for compatibility but is always set to
-            0 as we do not consider early terminations when using the model.
-
-            Parameters
-            ----------
-            actions : int or numpy array, shape (n_samples, n_action_features
-            or (n_action_features,)
-                The actions to be taken. Can be an int if action_space is
-                of Discrete type. If actions is a 1D array it is assumed
-                that it contains one sample. Allowing to pass int or a 1D array
-                is needed for compatibility with gym environments, for instance
-                when training a model-free agent with the model environment.
-
-            Returns
-            -------
-            observation : numpy array, shape (n_samples, n_features)
-                The sampled observations.
-
-            reward : numpy array, shape (n_samples,)
-                Reward computed from the taken action and the obtained
-                observations.
-
-            done : numpy array, shape (n_samples)
-                An array of zeros is always returned.
-
-            info : dict
-                Empty dict, used for compatibility with AI Gym API.
-            """
-            is_one_action_sample = False
-            if (isinstance(self.action_space, Discrete) and
-                    not isinstance(actions, np.ndarray)):
-                is_one_action_sample = True
-                actions = np.array([actions]).reshape(1, -1)
-
-            if actions.ndim == 1:
-                is_one_action_sample = True
-                actions = actions.reshape(1, -1)
-
-            n_samples = actions.shape[0]
-            if n_samples > 1 and self.n_burn_in >= 1:
-                raise ValueError(
-                    'When n_burn_in > 1, the passed actions array must only '
-                    'have 1 sample')
-            self.add_action_to_history(actions)
-
-            observations = self._workflow_step(self.history, seed=None)
-            observations = observations.to_numpy()
-            observations = np.clip(
-                observations,
-                self.observation_space.low,
-                self.observation_space.high)
-            self._elapsed_steps += 1
-
-            rewards = self.reward_func(np.concatenate((observations, actions), axis=1))
-            done = np.zeros((n_samples, 1))
-
-            self.add_observations_to_history(
-                observations, np.zeros((n_samples, 1)))
-
-            if (self._max_episode_steps and
-                    self._elapsed_steps == self._max_episode_steps):
-                done = np.ones((n_samples, 1)).astype(bool)
-            else:
-                done = np.zeros(n_samples).astype(bool)
-
-            if is_one_action_sample:
-                # for compatibility with stable baselines 3
-                observations = observations.ravel()
-                rewards = float(rewards)
-                done = bool(0)
-
-            return observations, rewards, done, {}
 
         def train_model(self, epoch):
             """Update model with collected data.
@@ -367,7 +291,8 @@ def make_model_env_class(system_env_object):
             Sometimes the parent class, the system environment object,
             implements its own __getstate__ method and makes the copy of
             the ModelEnv object fail."""
-            return self.__dict__.copy()
+            state = self.__dict__.copy()
+            return state
 
         def __setstate__(self, state):
             """Needed to override this method of the parent class.
@@ -376,5 +301,97 @@ def make_model_env_class(system_env_object):
             implements its own __setstate__ method and makes the copy of
             the ModelEnv object fail."""
             self.__dict__.update(state)
+
+        # all the following methods are abstract methods of VecEnv
+        def close(self) -> None:
+            return super().close()
+
+        def env_is_wrapped(self, wrapper_class, indices=None):
+            return [False] * self.num_envs
+
+        def env_method(self, method_name, *method_args, indices=None, **method_kwargs):
+            return super().env_method(
+                method_name, *method_args, indices=indices, **method_kwargs)
+
+        def get_attr(self, attr_name, indices=None):
+            return super().get_attr(attr_name, indices)
+
+        def seed(self, seed=None):
+            return super().seed(seed)
+
+        def set_attr(self, attr_name, value, indices=None):
+            return super().set_attr(attr_name, value, indices)
+
+        def step_async(self, actions):
+            self.actions = actions
+
+        def step_wait(self):
+            """Step function of the model environment.
+
+            The history of the environment is used by the model for the
+            dynamics prediction and updated at each step with the given action
+            and returned observations.
+            Note that done is returned for compatibility but is always set to
+            0 as we do not consider early terminations when using the model.
+
+            Parameters
+            ----------
+            actions : int or numpy array, shape (n_samples, n_action_features
+            or (n_action_features,)
+                The actions to be taken. Can be an int if action_space is
+                of Discrete type. If actions is a 1D array it is assumed
+                that it contains one sample. Allowing to pass int or a 1D array
+                is needed for compatibility with gym environments, for instance
+                when training a model-free agent with the model environment.
+
+            Returns
+            -------
+            observation : numpy array, shape (n_samples, n_features)
+                The sampled observations.
+
+            reward : numpy array, shape (n_samples,)
+                Reward computed from the taken action and the obtained
+                observations.
+
+            done : numpy array, shape (n_samples)
+                An array of zeros is always returned.
+
+            info : dict
+                Empty dict, used for compatibility with AI Gym API.
+            """
+            if actions.ndim == 1:
+                actions = actions.reshape(-1, 1)
+
+            n_samples = actions.shape[0]
+            if n_samples > 1 and self.n_burn_in >= 1:
+                raise ValueError(
+                    'When n_burn_in > 1, the passed actions array must only '
+                    'have 1 sample')
+            self.add_action_to_history(actions)
+
+            observations = self._workflow_step(self.history, seed=None)
+            observations = observations.to_numpy()
+            observations = np.clip(
+                observations,
+                self.observation_space.low,
+                self.observation_space.high)
+            self._elapsed_steps += 1
+
+            rewards = self.reward_func(np.concatenate((observations, actions), axis=1))
+
+            self.add_observations_to_history(
+                observations, np.zeros((n_samples, 1))
+            )
+
+            if (self._max_episode_steps and
+                    self._elapsed_steps == self._max_episode_steps):
+                done = np.ones(n_samples).astype(bool)
+                infos = [{"terminal_observation": obs} for obs in observations]
+                observations = self.reset()
+            else:
+                done = np.zeros(n_samples).astype(bool)
+                infos = [{} for _ in range(self.num_envs)]
+
+            return observations, rewards, done, infos
 
     return ModelEnv

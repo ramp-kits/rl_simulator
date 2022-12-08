@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 from sklearn.utils.validation import check_random_state
@@ -7,6 +9,7 @@ N_ACTION_SEQUENCES = 5
 PLANNING_HORIZON = 2
 
 N_ACTIONS = 3
+GAMMA = 1
 
 
 class Agent:
@@ -19,27 +22,40 @@ class Agent:
     epoch_output_dir : string
         Path of the output directory of the current epoch. Can be used to save
         results.
-    epsilon : float
-        Value of epsilon for the epsilon-greedy exploration. Set to None if
-        not epsilon-greedy not used.
-    gamma : float
-        Discount factor.
+    eval_env :
+        Real system environment if needed to evaluate agent on it.
+    eval_model_env :
+        Model environment if needed to evaluate agent on it.
+    planning_env :
+        Model environment if needed to plan.
+    metadata : dict
+        Metadata.
     random_action : bool
         Whether to draw actions at random.
     seed : int
         Seed of the RNG.
     """
 
-    def __init__(self, env, epoch_output_dir,
-                 epsilon=None, gamma=1, random_action=False,
+    def __init__(self, env, output_dir, eval_env=None, eval_model_env=None,
+                 planning_env=None,
+                 metadata=None, epoch=0,
+                 random_action=False,
                  seed=None):
 
         self.seed(seed)
-        self.epoch_output_dir = epoch_output_dir
+        self.output_dir = output_dir
         self.env = env
-        self.epsilon = epsilon
-        self.gamma = gamma
         self.random_action = random_action
+        self._epoch = epoch
+
+    @property
+    def epoch(self):
+        return self._epoch
+
+    @epoch.setter
+    def epoch(self, new_epoch):
+        self._epoch = new_epoch
+        self.epoch_output_dir = os.path.join(self.output_dir, f'epoch_{self._epoch}')
 
     def seed(self, seed=None):
         # seed for numpy
@@ -79,7 +95,7 @@ class Agent:
             for horizon in range(PLANNING_HORIZON):
                 actions = action_sequences_reps[:, horizon].reshape(-1, 1)
                 _, rewards, _, _ = self.env.step(actions)
-                all_returns += (self.gamma ** horizon * rewards)
+                all_returns += (GAMMA ** horizon * rewards)
 
             all_returns = all_returns.reshape(N_ACTION_SEQUENCES, N_PARTICLES)
 

@@ -7,6 +7,8 @@ from numpy.testing import assert_array_almost_equal
 from numpy.testing import assert_array_equal
 import pandas as pd
 
+from stable_baselines3.common.env_checker import check_env
+
 from mbrltools.model_env import make_model_env_class
 
 # To be able to test the functions with the small_acrobot test example
@@ -117,7 +119,7 @@ def test_step(monkeypatch):
     # change workflow step and n_burn_in
     model_env.workflow_step = _workflow_step
     model_env.n_burn_in = 3  # set n_burn_in so that we have the full history
-    model_env.trained_model = None  # set model to None as needed but not used
+    model_env.trained_model = ''  # set trained_model to something different to None
     actions = np.array([0, 1])
 
     observation = model_env.reset()
@@ -128,9 +130,9 @@ def test_step(monkeypatch):
         history_1[a, 4] = action
         observation, reward_1, done, _ = model_env.step(action)
         assert_array_equal(
-            observation, np.full(shape=(1, 4), fill_value=action ** 2))
+            observation, np.full(shape=(4,), fill_value=action ** 2))
         reward_2 = _reward_func(
-            np.concatenate((observation, [[action]]), axis=1))
+            np.concatenate((observation.reshape(1, -1), [[action]]), axis=1))
         assert reward_1 == reward_2
         assert done == 0
         history_1[a + 1, :4] = observation
@@ -162,3 +164,30 @@ def test_pickle(monkeypatch, tmp_path, create_random_trace):
     model_env_pkl = cloudpickle.dumps(model_env)
     del model_env
     cloudpickle.loads(model_env_pkl)
+
+
+def test_compatibility_with_sb3(monkeypatch, tmp_path, create_random_trace):
+    # check model_env is compatible with sb3
+    monkeypatch.chdir(small_acrobot_dir_path)
+    monkeypatch.syspath_prepend(small_acrobot_dir_path)
+    import problem
+    from env import Env
+    from reward_function import reward_func
+    ModelEnv = make_model_env_class(Env)
+
+    # save random initial trace used to train the model
+    create_random_trace(system_env_object=Env, n_action_features=1,
+                        metadata=problem.metadata, path_dir=tmp_path)
+    submission_path = os.path.join('submissions', 'dummy_kit')
+
+    seed = 1
+    acrobot = Env()
+    acrobot.seed(seed)
+
+    model_env = ModelEnv(
+        submission_path=submission_path, problem_module=problem,
+        reward_func=reward_func, metadata=problem.metadata, output_dir=tmp_path,
+        seed=0)
+    model_env.train_model(epoch=0)
+
+    check_env(model_env)

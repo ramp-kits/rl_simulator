@@ -148,7 +148,7 @@ def test_agent_with_true_dynamics(monkeypatch):
     from agents.random_shooting import Agent
 
     agent_env = Env()
-    agent = Agent(agent_env, epoch_output_dir=None)
+    agent = Agent(agent_env, output_dir='')
     agent.env.seed(1)
     agent_observation_1 = agent.env.reset()
     agent_observation_2, agent_reward, _, _ = agent.env.step(1)
@@ -191,9 +191,9 @@ def test_model_based_agent_custom(monkeypatch, tmp_path, create_random_trace):
             if self.random_action:
                 return 0
             else:
-                # the model always predict 10
+                # the model always predict 2
                 observation, _, _, _ = self.env.step(1)
-                if (observation == 10).all():
+                if (observation == 2).all():
                     return 1
                 else:
                     return 2
@@ -216,17 +216,18 @@ def test_numpy_model_env(monkeypatch, capsys):
 
     problem_names = ['problem', 'numpy_problem']
     submission_names = ['starting_kit', 'numpy_starting_kit']
-    model_env_names = ['model_env', 'numpy_model_env']
+    model_env_modules = ['model_env', 'numpy_model_env']
     agent_names = ['random_shooting', 'numpy_random_shooting']
 
     captured = []
-    for problem_name, submission_name, model_env_name, agent_name in zip(
-            problem_names, submission_names, model_env_names, agent_names):
+    for problem_name, submission_name, model_env_module, agent_name in zip(
+            problem_names, submission_names, model_env_modules, agent_names):
 
         mbrl_run(
             agent_name, submission_name, n_epochs=2, min_epoch_steps=5,
             min_random_steps=5,
-            episodic_update=False, initial_trace=False, model_env=model_env_name,
+            episodic_update=False, initial_trace=False,
+            model_env_module=model_env_module,
             seed=0, problem_name=problem_name)
         captured.append(capsys.readouterr().out)
 

@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.utils.validation import check_random_state
 from rampwf.utils.importing import import_module_from_source
 
+from gym import spaces
 from gym.envs.classic_control import AcrobotEnv
 
 dir_path = os.path.dirname(__file__)
@@ -22,6 +23,12 @@ class Env(AcrobotEnv):
     def __init__(self, max_episode_steps=5):
         self.max_episode_steps = max_episode_steps
         super(Env, self).__init__()
+
+        high = np.array([
+            np.pi, np.pi, AcrobotEnv.MAX_VEL_1, AcrobotEnv.MAX_VEL_2],
+            dtype=np.float32)
+        low = -high
+        self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
 
     def seed(self, seed=None):
         """Same as parent method but passing a RandomState instance is allowed.
