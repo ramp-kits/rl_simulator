@@ -18,8 +18,8 @@ def create_random_trace():
         env.reset()
         n_states = len(env.get_numpy_state())
 
-        trace = rollout(system_env=env, n_action_features=n_action_features,
-                        epoch=0, min_epoch_steps=10, agent=None)
+        trace, _ = rollout(system_env=env, n_action_features=n_action_features,
+                           epoch=0, min_epoch_steps=10, agent=None, n_cum_steps=0)
 
         observation_names = metadata["observation"]
         action_names = metadata["action"]

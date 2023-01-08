@@ -109,6 +109,7 @@ def get_first_episodes(trace_path, metadata, n_episodes=None):
 def rollout(system_env, n_action_features,
             epoch=0, min_epoch_steps=1000, n_episodes=None,
             agent=None, episodic_update=False,
+            n_cum_steps=0,
             tensorboard_path=None):
     """Perform a rollout on the environment using the agent.
 
@@ -134,6 +135,8 @@ def rollout(system_env, n_action_features,
     episodic_update : bool
         Whether to update the model after each episode, in which case one epoch
         is exaclty one episode.
+    n_cum_steps : int
+        Number of cumulative steps. Used for tensorboard logging.
     tensorboard_path : string
         Path to the tensorboard directory.
 
@@ -210,15 +213,18 @@ def rollout(system_env, n_action_features,
         print('Return:', np.sum(rewards))
         print('Number of epoch steps:', epoch_step)
 
+        n_cum_steps += episode_step
+        if tensorboard_path is not None:
+            writer_rollout.add_scalar(
+                'Mean reward', float(np.mean(rewards)), global_step=n_cum_steps)
+            writer_rollout.add_scalar(
+                'Return', float(np.sum(rewards)), global_step=n_cum_steps)
+
         if episodic_update:
             # one epoch is exactly one episode
             break
 
-    if tensorboard_path is not None:
-        writer_rollout.add_scalar('Mean reward', float(np.mean(rewards)), epoch)
-        writer_rollout.add_scalar('Return', float(np.sum(rewards)), epoch)
-
-    return trace
+    return trace, n_cum_steps
 
 
 def train_test_split(output_dir='data', trace_path='trace.csv',

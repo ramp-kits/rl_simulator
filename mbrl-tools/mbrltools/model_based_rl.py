@@ -195,6 +195,10 @@ def mbrl_run(agent_name, submission,
                              metadata=metadata,
                              epoch=epoch_start)
 
+    # counter for the total number of steps, used for tensorboard.
+    # the logging of metrics for tensorboard is done at the end of each episode and the
+    # total number of steps on the real system is logged at the same time.
+    n_cum_steps = 0
     for epoch in range(epoch_start, n_epochs):
         # use the agent on the real system, collect the trace to update the
         # model and update the agent using the updated model
@@ -210,11 +214,12 @@ def mbrl_run(agent_name, submission,
             min_rollout_steps = min_epoch_steps
             agent.random_action = False
 
-        trace = rollout(
+        trace, n_cum_steps = rollout(
             system_env, len(action_names),
             epoch=epoch, min_epoch_steps=min_rollout_steps,
             n_episodes=n_epoch_episodes,
             agent=agent, episodic_update=episodic_update,
+            n_cum_steps=n_cum_steps,
             tensorboard_path=os.path.join(output_dir, 'tensorboard'))
 
         # save new trace to disk

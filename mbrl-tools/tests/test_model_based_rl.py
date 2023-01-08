@@ -91,9 +91,9 @@ def test_rollout():
 
     agent = CyclicAgent()
 
-    trace = rollout(epoch=epoch, min_epoch_steps=min_epoch_steps,
-                    system_env=system_env, agent=agent, n_action_features=1,
-                    episodic_update=False)
+    trace, _ = rollout(epoch=epoch, min_epoch_steps=min_epoch_steps,
+                       system_env=system_env, agent=agent, n_action_features=1,
+                       episodic_update=False)
 
     assert isinstance(trace, list)
 
@@ -130,9 +130,9 @@ def test_rollout():
     assert_array_equal(trace_observations, expected_observations)
 
     # check when episodic_update is set to True
-    trace = rollout(epoch=epoch, min_epoch_steps=min_epoch_steps,
-                    system_env=system_env, agent=agent, n_action_features=1,
-                    episodic_update=True)
+    trace, _ = rollout(epoch=epoch, min_epoch_steps=min_epoch_steps,
+                       system_env=system_env, agent=agent, n_action_features=1,
+                       episodic_update=True)
     # trace contains only one episode
     assert len(trace) == max_episode_steps + 1
 
