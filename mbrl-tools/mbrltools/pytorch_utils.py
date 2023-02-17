@@ -1,5 +1,7 @@
 import copy
 
+from tqdm import tqdm
+
 import numpy as np
 
 from sklearn.utils import check_random_state
@@ -155,7 +157,7 @@ def train(model, dataset_train, dataset_valid=None,
 
     val_scheduler = isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau)
 
-    for epoch in range(n_epochs):
+    for epoch in tqdm(range(n_epochs), desc='Training epoch'):
 
         model.train()
 

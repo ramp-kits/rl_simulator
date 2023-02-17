@@ -19,3 +19,5 @@ dependencies:
   - pyarrow=11.0.*
   - tensorboard=2.11.*
   - stable-baselines3=1.4.0
+  - tqdm
+  - natsort

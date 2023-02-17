@@ -2,11 +2,13 @@ import os
 import json
 
 import pathlib
+import collections
 
 import pandas as pd
 import numpy as np
 
-import collections
+from tqdm import tqdm
+from natsort import natsorted
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -145,7 +147,7 @@ def rollout(system_env, n_action_features,
     trace : list of numpy arrays
         Trace collected from the rollout.
     """
-    print('Epoch', epoch)
+    print('\nEpoch', epoch)
 
     if n_episodes is not None:
         min_epoch_steps = np.inf
@@ -169,13 +171,12 @@ def rollout(system_env, n_action_features,
         state = system_env.get_numpy_state()
 
         rewards = []
-        done = 0
         episode_step = 0
-        while not done:
+        for episode_step in tqdm(
+                range(system_env.max_episode_steps), initial=1,
+                total=system_env.max_episode_steps, desc='Steps'):
             # restart = 1 if first episode step, otherwise 0
             restart = int(not(episode_step))
-            if episode_step % 10 == 0:
-                print(f'step: {episode_step}')
             if agent is None:
                 action = system_env.action_space.sample()
             else:
@@ -195,7 +196,6 @@ def rollout(system_env, n_action_features,
             trace.append(trace_step)
 
             # update observation
-            episode_step += 1
             observation = new_observation
             state = system_env.get_numpy_state()
 
@@ -205,6 +205,7 @@ def rollout(system_env, n_action_features,
             (observation, np.repeat(np.nan, n_nans), 0, epoch, state))
         trace.append(last_obs)
 
+        episode_step += 1  # this is to take into account the fact that we start at 0
         epoch_step += episode_step
         n_done_episodes += 1
 
@@ -297,7 +298,7 @@ def get_trace_df(seed_dir, verbose=False):
     """
     metadata_path = os.path.join('data', 'metadata.json')
     metadata = get_metadata_dictionary(metadata_path)
-    trace_paths = list(seed_dir.glob('epoch_*/trace.csv'))
+    trace_paths = natsorted(list(seed_dir.glob('epoch_*/trace.csv')), key=str)
     trace_dfs = []
     for trace_path in trace_paths:
         try:
@@ -310,5 +311,5 @@ def get_trace_df(seed_dir, verbose=False):
         return None
     all_traces = pd.concat(trace_dfs, axis=0).reset_index(drop=True)
     all_traces = preprocess_time(all_traces, metadata)
-    trace_df = all_traces.dropna().reset_index().reset_index()
+    trace_df = all_traces.dropna().reset_index(drop=True).reset_index(drop=True)
     return trace_df
