@@ -17,7 +17,9 @@ class GenerativeRegressor(BaseGenerativeRegressor):
         target_dim : int
             The index of the target column to be predicted.
         """
+        self.max_dists = max_dists
         self.decomposition = 'autoregressive'
+        self.target_dim = target_dim
 
     def fit(self, X_array, y_array):
         """Linear regression + residual sigma.

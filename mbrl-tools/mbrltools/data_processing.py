@@ -40,7 +40,7 @@ def read_data_with_metadata(trace_path, metadata):
     except KeyError:
         enc = None
 
-    return pd.read_csv(trace_path, encoding=enc)
+    return pd.read_csv(trace_path, encoding=enc, engine='pyarrow')
 
 
 def preprocess_time(data, metadata):

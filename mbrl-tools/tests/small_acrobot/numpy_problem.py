@@ -16,11 +16,6 @@ with open(metadata_path, "r") as json_file:
 _target_column_observation_names = metadata["observation"]
 _target_column_action_names = metadata["action"]
 _restart_name = metadata['restart_name']
-# number of guaranteed steps in time series history
-_n_burn_in = metadata['n_burn_in']
-timestamp_name = metadata['timestamp_name']
-if timestamp_name == '':
-    timestamp_name = 'fake_ts'
 
 Predictions = rw.prediction_types.make_generative_regression(
     _max_n_components, label_names=_target_column_observation_names)
@@ -39,17 +34,11 @@ for o_i, o in enumerate(_target_column_observation_names):
         score_type.output_dim = o_i
     score_types += dim_score_types
 
-cv = rw.cvs.KFoldPerEpisode(restart_name=_restart_name)
-get_cv = cv.get_cv
-
-workflow = rw.workflows.TSFEGenReg(
-    # check_sizes=[137], check_indexs=[13], max_n_components=_max_n_components,
+workflow = rw.workflows.FEGenRegNumpy(
     check_sizes=None, check_indexs=None, max_n_components=_max_n_components,
     target_column_observation_names=_target_column_observation_names,
     target_column_action_names=_target_column_action_names,
-    restart_name=_restart_name,
-    timestamp_name='time'
-)
+    restart_name=_restart_name)
 
 
 def get_train_data(path='.', data_label=''):
@@ -86,7 +75,7 @@ def _read_data(path, X_name, data_label=''):
 
     Return
     ------
-    X_df : pandas DataFrame
+    X_array : numpy array
         Preprocessed data. Same format as the original data file but with
         targets appended. Each row thus contains a transition
         (past observation, action, new observation). Indeed, as the chaining
@@ -102,10 +91,7 @@ def _read_data(path, X_name, data_label=''):
         X_df = pd.read_csv(os.path.join(path, 'data', X_name))
     else:
         X_df = pd.read_csv(os.path.join(path, 'data', data_label, X_name))
-    # rename timestamp_name to time so that it works with ramp-workflow and
-    # set time as index
-    X_df = X_df.rename(columns={timestamp_name: 'time'})
-    X_df = X_df.set_index('time', drop=True)
+
     # make sure that we have float for action because of check_ds...
     X_df = X_df.astype({_target_column_action_names[0]: 'float'})
     X_df = X_df.astype({_restart_name: 'int64'})
@@ -138,4 +124,4 @@ def _read_data(path, X_name, data_label=''):
     X_df.set_index(date, inplace=True)
     X_df.dropna(how='any', inplace=True)
 
-    return X_df, X_df[extra_truth].to_numpy()
+    return X_df.to_numpy(), X_df[extra_truth].to_numpy()

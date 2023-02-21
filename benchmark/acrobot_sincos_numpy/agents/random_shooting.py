@@ -3,8 +3,8 @@ import numpy as np
 from sklearn.utils.validation import check_random_state
 
 N_PARTICLES = 1
-N_ACTION_SEQUENCES = 5
-PLANNING_HORIZON = 2
+N_ACTION_SEQUENCES = 100
+PLANNING_HORIZON = 10
 
 N_ACTIONS = 3
 
@@ -68,10 +68,7 @@ class Agent:
             # sampling of the model
             observation_vec = np.tile(
                 observations, (N_ACTION_SEQUENCES * N_PARTICLES, 1))
-            restart_vec = np.array(
-                [restart] * N_ACTION_SEQUENCES * N_PARTICLES)
-            restart_vec = restart_vec.reshape(-1, 1)
-            self.env.add_observations_to_history(observation_vec, restart_vec)
+            self.env.prev_observations = observation_vec
 
             action_sequences = self.np_random.randint(
                 N_ACTIONS, size=(N_ACTION_SEQUENCES, PLANNING_HORIZON))

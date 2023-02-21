@@ -10,15 +10,16 @@ from rampwf.utils.importing import import_module_from_source
 
 from .data_processing import get_metadata_dictionary
 from .data_processing import rollout
-from .model_env import make_model_env_class
 
 
 def model_based_rl(agent_name, submission,
                    n_epochs, min_epoch_steps, min_random_steps,
-                   episodic_update, initial_trace,
-                   seed):
-    """Main script of model based RL loop."""
+                   episodic_update, initial_trace, model_env,
+                   seed, problem_name=None):
+    """Main script of model based RL loop.
 
+    The problem_name argument is used for the purpose of testing.
+    """
     np.random.seed(seed)
     if seed is not None:
         torch.manual_seed(seed)
@@ -31,7 +32,10 @@ def model_based_rl(agent_name, submission,
            f'agent for {n_epochs} epochs with at least {min_epoch_steps} '
            f'steps per epoch and {min_random_steps} random steps.'))
 
-    problem_module_path = 'problem.py'
+    if problem_name is None:
+        problem_module_path = 'problem.py'
+    else:
+        problem_module_path = problem_name + '.py'
     problem_module = import_module_from_source(problem_module_path, 'problem')
 
     env_module_path = 'env.py'
@@ -63,6 +67,12 @@ def model_based_rl(agent_name, submission,
     if submission == 'real_system':
         model_env = system_env
     else:
+        if model_env == 'model_env':
+            from .model_env import make_model_env_class
+        elif model_env == 'numpy_model_env':
+            from .numpy_model_env import make_model_env_class
+        else:
+            raise ValueError('The passed model_env is not supported.')
         submission_path = os.path.join('submissions', submission)
         ModelEnv = make_model_env_class(system_env_object)
         model_env = ModelEnv(
@@ -156,16 +166,20 @@ def model_based_rl(agent_name, submission,
               "If True, the initial trace should be stored under trace.csv in "
               "submissions/<submission>/mbrl_outputs/<agent_name>/seed_<seed>/"
               "epoch_0/.")
+@click.option("--model-env", default='model_env', show_default=True,
+              type=click.STRING, help="Which model environment module to use. The "
+              " default is to use the model_env module based on pandas. For faster "
+              " computations use the numpy_model_env one.")
 @click.option("--seed", default=0, show_default=True,
               help="Seed of the random number generator. Only the numpy and "
               "pytorch global random generators are seeded.")
 def model_based_rl_command(agent_name, submission,
                            n_epochs, min_epoch_steps, min_random_steps,
-                           episodic_update, initial_trace,
+                           episodic_update, initial_trace, model_env,
                            seed):
     return model_based_rl(
         agent_name, submission, n_epochs, min_epoch_steps, min_random_steps,
-        episodic_update, initial_trace, seed
+        episodic_update, initial_trace, model_env, seed
     )
 
 

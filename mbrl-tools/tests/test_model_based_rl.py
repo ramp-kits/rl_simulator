@@ -1,6 +1,7 @@
 import os
 import itertools
 from mbrltools.model_env import make_model_env_class
+from mbrltools.model_based_rl import model_based_rl
 
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -151,3 +152,29 @@ def test_model_based_agent_custom(monkeypatch, tmp_path, create_random_trace):
             model_env, None, random_action=random_action)
 
         assert dummy_agent.act(observation=None) == expected_action
+
+
+def test_numpy_model_env(monkeypatch, capsys):
+    # test same results with numpy model env and pandas model env
+    monkeypatch.chdir(small_acrobot_dir_path)
+    monkeypatch.syspath_prepend(small_acrobot_dir_path)
+
+    problem_names = ['problem', 'numpy_problem']
+    submission_names = ['starting_kit', 'numpy_starting_kit']
+    model_env_names = ['model_env', 'numpy_model_env']
+    agent_names = ['random_shooting', 'numpy_random_shooting']
+
+    captured = []
+    for problem_name, submission_name, model_env_name, agent_name in zip(
+            problem_names, submission_names, model_env_names, agent_names):
+
+        model_based_rl(
+            agent_name, submission_name, n_epochs=2, min_epoch_steps=5,
+            min_random_steps=5,
+            episodic_update=False, initial_trace=False, model_env=model_env_name,
+            seed=0, problem_name=problem_name)
+        captured.append(capsys.readouterr().out)
+
+    # compare two console outputs, removing the first 2 lines that contain the name of
+    # the model and agents that are different
+    assert ''.join(captured[0].split('\n')[2:]) == ''.join(captured[1].split('\n')[2:])

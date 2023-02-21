@@ -83,3 +83,4 @@ class GenerativeRegressor(BaseGenerativeRegressor):
 
         y_sampled = means + rng.randn(n_samples) * sigmas
         return y_sampled
+
