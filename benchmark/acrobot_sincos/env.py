@@ -26,6 +26,9 @@ class Env(AcrobotEnv):
         """Same as parent method but passing a RandomState instance is allowed.
         """
         self.np_random = check_random_state(seed)
+        # set rng of action space to be the same as the one here so it can be
+        # controlled with the global seed
+        self.action_space._np_random = self.np_random
         return [seed]
 
     def reset(self):

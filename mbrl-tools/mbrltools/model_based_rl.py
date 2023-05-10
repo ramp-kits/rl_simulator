@@ -34,6 +34,7 @@ def mbrl_run(agent_name, submission,
     if seed is not None:
         torch.manual_seed(seed)
     print(f'Random seed: {seed}')
+    _seed = None
 
     if min_random_steps is None:
         min_random_steps = min_epoch_steps
@@ -52,7 +53,7 @@ def mbrl_run(agent_name, submission,
     env_module = import_module_from_source(env_module_path, 'env')
     system_env_object = env_module.Env
     system_env = system_env_object()
-    system_env.seed()
+    system_env.seed(_seed)
 
     # reward function
     reward_module_path = 'reward_function.py'
@@ -104,30 +105,32 @@ def mbrl_run(agent_name, submission,
             model_env = ModelEnv(
                 submission_path, problem_module, reward_func,
                 metadata, output_dir, partial_fit, save_model,
-                termination_func=termination_func, seed=None, num_envs=num_envs)
+                termination_func=termination_func, seed=_seed, num_envs=num_envs)
             model_env = VecMonitor(model_env)
             eval_model_env = ModelEnv(
                 submission_path, problem_module, reward_func,
                 metadata, output_dir, partial_fit, save_model,
-                termination_func=termination_func, seed=None, num_envs=1)
+                termination_func=termination_func, seed=_seed, num_envs=1)
             eval_model_env = VecMonitor(eval_model_env)
             planning_env = ModelEnv(
                 submission_path, problem_module, reward_func,
                 metadata, output_dir, partial_fit, save_model,
-                termination_func=termination_func, seed=None, num_envs=1)
+                termination_func=termination_func, seed=_seed, num_envs=1)
         else:
             model_env = ModelEnv(
                 submission_path, problem_module, reward_func,
                 metadata, output_dir, partial_fit, save_model,
-                termination_func=termination_func, seed=None)
+                termination_func=termination_func, seed=_seed)
             eval_model_env = ModelEnv(
                 submission_path, problem_module, reward_func,
                 metadata, output_dir, partial_fit, save_model,
-                termination_func=termination_func, seed=None)
+                termination_func=termination_func, seed=_seed)
             planning_env = ModelEnv(
                 submission_path, problem_module, reward_func,
                 metadata, output_dir, partial_fit, save_model,
-                termination_func=termination_func, seed=None)
+                termination_func=termination_func, seed=_seed)
+    eval_env = system_env_object()
+    eval_env.seed(_seed)
 
     # retrieving feature names
     observation_names = metadata["observation"]
@@ -170,8 +173,8 @@ def mbrl_run(agent_name, submission,
 
             epoch_start = epoch_resume
             agent = agent_object(model_env, output_dir=output_dir,
-                                 seed=None,
-                                 eval_env=system_env_object(),
+                                 seed=_seed,
+                                 eval_env=eval_env,
                                  eval_model_env=eval_model_env,
                                  planning_env=planning_env,
                                  metadata=metadata,
@@ -184,8 +187,8 @@ def mbrl_run(agent_name, submission,
             model_env.train_model(epoch=epoch_start)
 
             agent = agent_object(model_env, output_dir=output_dir,
-                                 seed=None,
-                                 eval_env=system_env_object(),
+                                 seed=_seed,
+                                 eval_env=eval_env,
                                  eval_model_env=eval_model_env,
                                  planning_env=planning_env,
                                  metadata=metadata,
@@ -200,8 +203,8 @@ def mbrl_run(agent_name, submission,
         print('Using a random agent for the first epoch')
         epoch_start = 0
         agent = agent_object(model_env, output_dir=output_dir,
-                             random_action=True, seed=None,
-                             eval_env=system_env_object(),
+                             random_action=True, seed=_seed,
+                             eval_env=eval_env,
                              eval_model_env=eval_model_env,
                              planning_env=planning_env,
                              metadata=metadata,
