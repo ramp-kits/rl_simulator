@@ -69,18 +69,10 @@ class Agent:
         action : float
             The action to take.
         """
-        if hasattr(self.env, 'history'):
-            self.env.add_observations_to_history(
-                observations.reshape(1, -1), np.array([[restart]]))
-
         if self.random_action:
             return self.np_random.uniform(low=-3, high=3)
         else:
-            # recover current state/history of the environment
-            if hasattr(self.env, 'history'):
-                initial_state = copy.deepcopy(self.env.history)
-            else:  # real system
-                initial_state = copy.deepcopy(self.env.get_state())
+            initial_state = copy.deepcopy(self.env.get_state())
 
             action_sequences = self.np_random.uniform(
                 low=-3, high=3,
@@ -89,10 +81,7 @@ class Agent:
             def _parallel_func(action_sequence, env, initial_state):
                 returns = np.zeros(N_PARTICLES)
                 for p in range(N_PARTICLES):
-                    if hasattr(env, 'history'):
-                        env.history = initial_state
-                    else:
-                        env.set_state(initial_state)
+                    env.set_state(initial_state)
 
                     for a, action in enumerate(action_sequence):
                         _, reward, _, _ = env.step(action)
@@ -114,12 +103,6 @@ class Agent:
             action = best_action_sequence[0]
 
             # put env back to its initial state
-            if hasattr(self.env, 'history'):
-                self.env.history = initial_state
-            else:
-                self.env.set_state(initial_state)
-
-        if hasattr(self.env, 'history'):
-            self.env.add_action_to_history(np.array([action]))
+            self.env.set_state(initial_state)
 
         return action
