@@ -42,10 +42,30 @@ class Env(AcrobotEnv):
         done = (self._elapsed_steps >= self.max_episode_steps)
         return observations, reward, int(done), info
 
-    def set_state(self, full_state):
+    def set_state(self, state_dict):
         """Set state of the environment."""
-        self._elapsed_steps, self.state = full_state
+        self._elapsed_steps = state_dict['_elapsed_steps']
+        self.state = np.r_[state_dict['qpos'], state_dict['qvel']]
 
     def get_state(self):
         """Get state of the environement."""
-        return self._elapsed_steps, self.state
+        state = self.state
+        state_dict = {
+            'qpos': state[:2],
+            'qvel': state[2:],
+            '_elapsed_steps': self._elapsed_steps,
+        }
+        return state_dict
+
+    def get_numpy_state(self):
+        """Get the state numpy array from the environment."""
+        state_dict = self.get_state()
+        return np.r_[state_dict['qpos'], state_dict['qvel']]
+
+    def set_numpy_state(self, numpy_state):
+        """Set the state from a numpy array.
+
+        Note that the _elapsed_steps attribute is reset to 0.
+        """
+        self.state = numpy_state
+        self._elapsed_steps = 0
