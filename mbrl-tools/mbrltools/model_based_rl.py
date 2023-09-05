@@ -24,7 +24,6 @@ def mbrl_run(agent_name, submission,
              model_env_module="model_env", num_envs=10,
              seed=99999, partial_fit=False,
              epoch_resume=None,
-             start_from_trace=False, start_from_model=False, start_from_agent=False,
              save_model=True, save_agent=True,
              problem_name=None):
     """Main script of model based RL loop.
@@ -138,22 +137,17 @@ def mbrl_run(agent_name, submission,
 
     if epoch_resume is not None:
 
-        if sum([start_from_model, start_from_agent, start_from_trace]) != 1:
-            raise ValueError(
-                'One and only one of start_from_model, start_from_agent or '
-                'start_from_trace can be True')
-
         epoch_resume = int(epoch_resume)
         epoch_output_dir = os.path.join(output_dir, f'epoch_{epoch_resume}')
 
-        if start_from_agent:
+        if os.path.exists(os.path.join(epoch_output_dir, 'trained_agent.pkl')):
             agent = unpickle_trained_model(
                 epoch_output_dir, 'trained_agent.pkl', is_silent=False)
             model_env = agent.env
 
             epoch_start = epoch_resume
 
-        if start_from_model:
+        elif os.path.exists(os.path.join(epoch_output_dir, 'trained_model.pkl')):
             warnings.warn(
                 'The agent will be trained from scratch with the given model')
 
@@ -171,7 +165,7 @@ def mbrl_run(agent_name, submission,
                                  metadata=metadata,
                                  epoch=epoch_start)
 
-        if start_from_trace:
+        elif os.path.exists(os.path.join(epoch_output_dir, 'trace.csv')):
             warnings.warn(
                 'The model and agent will be trained from scratch from the past traces')
             epoch_start = epoch_resume
@@ -184,14 +178,14 @@ def mbrl_run(agent_name, submission,
                                  planning_env=planning_env,
                                  metadata=metadata,
                                  epoch=epoch_start)
+        else:
+            raise ValueError(
+                f'Cannot resume from epoch {epoch_resume} as there is no agent nor '
+                'model nor trace to start from.')
 
     else:
         # random agent
         print('Using a random agent for the first epoch')
-        if start_from_agent or start_from_model or start_from_trace:
-            raise ValueError(
-                'If you want to start from an agent, model or past traces you need to '
-                'set epoch_resume')
         epoch_start = 0
         agent = agent_object(model_env, output_dir=output_dir,
                              random_action=True, seed=None,
@@ -299,22 +293,12 @@ def mbrl_run(agent_name, submission,
 @click.option("--epoch-resume", default=None, show_default=True,
               type=click.INT,
               help="If we want to resume training, the epoch from where "
-              "we resume training. The first epoch to be run will be epoch_resume + 1")
-@click.option("--start-from-trace", default=False, show_default=True,
-              type=click.BOOL, help="Whether to start from past traces when "
-              "epoch_resume is not None. Note that in this case the model and"
-              " the agent are trained from scratch from the past traces.")
-@click.option("--start-from-model", default=False, show_default=True,
-              type=click.BOOL, help="Whether to start from a pickled model when "
-              "epoch_resume is not None. If True, the model to be loaded should be "
-              "stored under trained_model.pkl in submissions/<submission>/mbrl_outputs/"
-              "<data_label>/<agent_name>/seed_<seed>/epoch_<epoch_resume>/. Note that "
-              "in this case the agent is trained from scratch from the given model.")
-@click.option("--start-from-agent", default=False, show_default=True,
-              type=click.BOOL, help="Whether to start from a pickled agent when "
-              "epoch_resume is not None. If True, the agent to be loaded should be "
-              "stored under trained_agent.pkl in submissions/<submission>/mbrl_outputs/"
-              "<data_label>/<agent_name>/seed_<seed>/epoch_<epoch_resume>/.")
+              "we resume training. The training will resume from the agent if there is "
+              "one saved, otherwise from the model is there is one saved (note that in "
+              "this case the agent will be trained from scratch, othwersise from the "
+              "past traces (note that in this case both the model and the agent will be"
+              " trained from scratch). The first epoch to be run will be epoch_resume "
+              "+ 1.")
 @click.option("--save-model", default=True, show_default=True,
               help="Whether to save the trained_model.pkl at each epoch.")
 @click.option("--save-agent", default=True, show_default=True,
@@ -325,7 +309,6 @@ def mbrl_run_command(agent_name, submission,
                      model_env_module, num_envs,
                      data_label,
                      seed, partial_fit, epoch_resume,
-                     start_from_trace, start_from_model, start_from_agent,
                      save_model, save_agent):
     return mbrl_run(
         agent_name, submission,
@@ -334,7 +317,6 @@ def mbrl_run_command(agent_name, submission,
         model_env_module, num_envs,
         data_label,
         seed, partial_fit, epoch_resume,
-        start_from_trace, start_from_model, start_from_agent,
         save_model, save_agent
     )
 
