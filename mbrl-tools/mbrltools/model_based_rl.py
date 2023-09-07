@@ -223,9 +223,6 @@ def mbrl_run(agent_name, submission,
             tensorboard_path=os.path.join(output_dir, 'tensorboard'))
 
         # save new trace to disk
-        epoch_output_dir = os.path.join(output_dir, f'epoch_{epoch}')
-        if not os.path.exists(epoch_output_dir):
-            os.makedirs(epoch_output_dir)
         trace_path = os.path.join(epoch_output_dir, 'trace.csv')
         trace_df = pd.DataFrame(data=trace, columns=trace_header)
         trace_df.to_csv(trace_path, index=False)
