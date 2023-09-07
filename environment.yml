@@ -12,7 +12,6 @@ dependencies:
   - xarray=0.17.*
   - click=8.0.*
   - scikit-learn=0.24.*
-  - dill=0.3.*
   - gym=0.17.*
   - pytorch=1.9.*
   - cpuonly=1.0
