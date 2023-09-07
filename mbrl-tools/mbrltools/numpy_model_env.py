@@ -77,6 +77,7 @@ def make_model_env_class(system_env_object):
             # only storing needed problem_module attributes as problem_module
             # can be problematic to pickle
             self.workflow_step = problem_module.workflow.step
+            self.workflow_get_dist = problem_module.workflow.get_dist
             self.get_train_data = problem_module.get_train_data
             self.train_submission = problem_module.workflow.train_submission
 
