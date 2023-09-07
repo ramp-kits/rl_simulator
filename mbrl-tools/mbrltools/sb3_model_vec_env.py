@@ -373,6 +373,7 @@ def make_model_env_class(system_env_object):
             info : dict
                 Empty dict, used for compatibility with AI Gym API.
             """
+            actions = self.actions
             if actions.ndim == 1:
                 actions = actions.reshape(-1, 1)
 
