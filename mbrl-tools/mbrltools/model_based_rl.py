@@ -20,8 +20,8 @@ from stable_baselines3.common.vec_env import VecMonitor
 def mbrl_run(agent_name, submission,
              n_epochs, min_epoch_steps, min_random_steps, n_epoch_episodes=None,
              episodic_update=False,
-             data_label="",
              model_env_module="model_env", num_envs=10,
+             data_label="",
              seed=99999, partial_fit=False,
              epoch_resume=None,
              save_model=True, save_agent=True,
@@ -84,7 +84,6 @@ def mbrl_run(agent_name, submission,
         f'seed_{seed}')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-
     # model
     if submission == 'real_system':
         model_env = system_env
@@ -291,8 +290,6 @@ def mbrl_run(agent_name, submission,
               type=click.BOOL,
               help="Whether to update the model after each episode such that "
               "one epoch is exaclty one episode.")
-@click.option("--data-label", default="", show_default=True, type=click.STRING,
-              help="Data label when evaluating different initial trace.")
 @click.option("--model-env-module", default='model_env', show_default=True,
               type=click.STRING, help="Which model environment module to use. The "
               " default is to use the model_env module based on pandas. For faster "
@@ -300,6 +297,8 @@ def mbrl_run(agent_name, submission,
 @click.option("--num-envs", default=10, show_default=True, type=click.INT,
               help="The number of environments to consider for the sb3 compatible "
               "vectorized model environment sb3_model_vec_env.")
+@click.option("--data-label", default="", show_default=True, type=click.STRING,
+              help="Data label when evaluating different initial trace.")
 @click.option("--seed", default=99999, show_default=True,
               help="Seed of the random number generator. Only the numpy and "
               "pytorch global random generators are seeded.")
