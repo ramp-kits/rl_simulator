@@ -1,4 +1,5 @@
 import copy
+import os
 
 import numpy as np
 
@@ -6,12 +7,16 @@ from joblib import Parallel, delayed
 
 from sklearn.utils.validation import check_random_state
 
-N_PARTICLES = 5
-N_ACTION_SEQUENCES = 100
-PLANNING_HORIZON = 10
-N_JOBS = 8
+default_config = {
+    'N_PARTICLES': 1,
+    'N_ACTION_SEQUENCES': 100,
+    'PLANNING_HORIZON': 10,
+}
 
 N_ACTIONS = 3
+GAMMA = 1
+
+N_JOBS = 8
 
 
 class Agent:
@@ -24,30 +29,65 @@ class Agent:
     ----------
     env : gym environment
         Environment with which to run the random shooting.
-    epoch_output_dir : string
-        Path of the output directory of the current epoch. Can be used to save
+    output_dir : string
+        Path of the output directory. Can be used to save
         results.
-    epsilon : float
-        Value of epsilon for the epsilon-greedy exploration. Set to None if
-        not epsilon-greedy not used.
-    gamma : float
-        Discount factor.
+    eval_env :
+        Real system environment if needed to evaluate agent on it.
+    eval_model_env :
+        Model environment if needed to evaluate agent on it.
+    planning_env :
+        Model environment if needed to plan.
+    config : dict
+        Hyperparameters. If None default_config is used.
+    metadata : dict
+        Metadata.
     random_action : bool
         Whether to draw actions at random.
     seed : int
         Seed of the RNG.
+    epoch : int
+        First epoch to run.
     """
 
-    def __init__(self, env, epoch_output_dir,
-                 epsilon=None, gamma=1, random_action=False,
-                 seed=None):
+    def __init__(self, env, output_dir,
+                 random_action=False, config=None,
+                 eval_env=None, eval_model_env=None,
+                 planning_env=None,
+                 metadata=None,
+                 seed=None, epoch=0):
 
         self.seed(seed)
-        self.epoch_output_dir = epoch_output_dir
+        self._epoch = epoch
+        self.output_dir = output_dir
+        self.epoch_output_dir = os.path.join(self.output_dir, f'epoch_{epoch}')
         self.env = env
-        self.epsilon = epsilon
-        self.gamma = gamma
+
         self.random_action = random_action
+
+        if config is not None:
+            for hyperopt in default_config.keys():
+                if hyperopt in config.keys():
+                    default_config[hyperopt] = config[hyperopt]
+
+        print(
+            "Agent hyperparameters: "
+            f"{[str(key) + '=' + str(value) for key, value in default_config.items()]}"
+        )
+
+        global N_PARTICLES, N_ACTION_SEQUENCES, PLANNING_HORIZON
+        N_PARTICLES = default_config['N_PARTICLES']
+        N_ACTION_SEQUENCES = default_config['N_ACTION_SEQUENCES']
+        PLANNING_HORIZON = default_config['PLANNING_HORIZON']
+
+    @property
+    def epoch(self):
+        return self._epoch
+
+    @epoch.setter
+    def epoch(self, new_epoch):
+        self._epoch = new_epoch
+        self.epoch_output_dir = os.path.join(self.output_dir, f'epoch_{self._epoch}')
 
     def seed(self, seed=None):
         # seed for numpy
@@ -84,7 +124,7 @@ class Agent:
 
                     for a, action in enumerate(action_sequence):
                         _, reward, _, _ = env.step(action)
-                        returns[p] += (self.gamma ** a * reward)
+                        returns[p] += (GAMMA ** a * reward)
 
                 return returns
 
