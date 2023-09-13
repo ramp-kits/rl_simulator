@@ -56,10 +56,11 @@ def make_model_env_class(system_env_object):
         """
 
         def __init__(self, submission_path, problem_module, reward_func,
-                     metadata, output_dir, partial_fit=False, seed=None,
+                     metadata, output_dir, partial_fit=False,
                      save_model=True,
-                     num_envs=1,
-                     termination_func=None):
+                     termination_func=None,
+                     seed=None,
+                     num_envs=1):
 
             self.num_envs = num_envs
 

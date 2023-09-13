@@ -247,13 +247,11 @@ def mbrl_run(agent_name, submission,
                 if model_env_module == 'sb3_model_vec_env':
                     eval_model_env.venv.trained_model = copy.deepcopy(
                         model_env.trained_model)
-                    planning_env.venv.trained_model = copy.deepcopy(
-                        model_env.trained_model)
                 else:
                     eval_model_env.trained_model = copy.deepcopy(
                         model_env.trained_model)
-                    planning_env.trained_model = copy.deepcopy(
-                        model_env.trained_model)
+                planning_env.trained_model = copy.deepcopy(
+                    model_env.trained_model)
 
         if save_agent:
             pickle_trained_model(
