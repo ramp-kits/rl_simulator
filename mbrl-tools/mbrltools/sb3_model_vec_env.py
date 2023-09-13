@@ -50,9 +50,15 @@ def make_model_env_class(system_env_object):
             model.
         seed : int
             Seed of the RNG used for this environment.
+        partial_fit : bool
+            If we want to pass the model from the previous epoch.
+        save_model : bool
+            Whether to save the trained model.
         termination_func : function
             Function taking as input observations and returning whether we should
             terminate.
+        num_envs : int
+            The number of environments.
         """
 
         def __init__(self, submission_path, problem_module, reward_func,
