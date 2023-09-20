@@ -199,6 +199,9 @@ def rollout(system_env, n_action_features,
             observation = new_observation
             state = system_env.get_numpy_state()
 
+            if done:
+                break
+
         # save last observation before a reset
         n_nans = n_action_features + 1  # NaNs for actions and reward
         last_obs = np.hstack(
