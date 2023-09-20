@@ -58,7 +58,10 @@ def preprocess_time(data, metadata):
 
     Creates a timestamp if absent in metadata and sorts values by time.
     """
-    timestamp_name = metadata["timestamp_name"]
+    timestamp_name = metadata.get('timestamp_name')
+    if timestamp_name is None:
+        return data
+
     if timestamp_name == "":
         timestamp_name = "fake_ts"
         data[timestamp_name] = data.index

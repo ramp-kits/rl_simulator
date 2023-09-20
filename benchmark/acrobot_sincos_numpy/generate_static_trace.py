@@ -18,6 +18,8 @@ Env = env.Env
 min_steps = 25_000
 trace_filename = 'trace.csv'
 output_dir = os.path.join('data', 'random')
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 trace_path = os.path.join(output_dir, trace_filename)
 
 metadata_path = os.path.join('data', 'metadata.json')
@@ -27,16 +29,20 @@ action_names = metadata["action"]
 restart_name = metadata["restart_name"]
 reward_name = metadata["reward"]
 
+env = Env(max_episode_steps=500)
+
+env.reset()  # reset is needed to get the number of states
+n_states = len(env.get_numpy_state())
 header = (
     observation_names + action_names + reward_name +
-    [restart_name] + ['epoch_id'])
+    [restart_name] + ['epoch_id'] +
+    [f'state_{i}' for i in range(n_states)]
+)
 
-env = Env(max_episode_steps=500)
 SEED = 32
 env.seed(SEED)
-env.action_space.np_random.seed(SEED)
 
-trace = rollout(env, len(action_names), epoch=0, min_epoch_steps=min_steps)
+trace, _ = rollout(env, len(action_names), epoch=0, min_epoch_steps=min_steps)
 trace_df = pd.DataFrame(data=trace, columns=header)
 trace_df.to_csv(trace_path, index=False)
 
