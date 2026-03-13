@@ -60,9 +60,14 @@ For more information on the `ramp-test` options and generated outputs please ref
 
 To evaluate a model, coupled with a random shooting agent, in a model-based reinforcement learning setup use the `mbrl-run` command. For instance to evaluate the linear model you can run
 ```
-mbrl-run --submission arlin_sigma --agent-name random_shooting
+mbrl-run --submission arlin_sigma --agent-name random_shooting_n100_h10
 ```
 The `--submission` option name was inherited from the terminology used by `ramp-test`. Other options include the number of epochs, the minimum number of steps per epoch, using an initial trace instead of running a random agent for the first epoch. More information on the different options can be obtained by running `model-based-rl --help`.
+
+For the agents that depend on `stable_baselines3`, you need to use the associated model environment:
+```
+mbrl-run --submission arlin_sigma --agent-name DQN_offline_vec_env --model-env-module sb3_model_vec_env
+```
 
 ## Citation
 If you use this code please cite our ICLR 2021 paper:
