@@ -11,22 +11,29 @@ The different systems of the benchmark are located in the `benchmark/` folder. E
 ## Installation
 
 You can install all the required packages with [conda](https://docs.conda.io/projects/conda/en/latest/index.html) and the following procedure:
-1. Create a new `conda` environment from `environment.yml` using `conda >= 4.9.2`:
+1. Create a new `conda` environment using `conda >= 4.9.2`:
 ```
-conda env create -f environment.yml
+conda create -n mbrl python=3.8
 ```
-By default this will create an environment named `mbrl`. You can specify the name of your choice by adding `-n <environment_name>` to the `conda env create` command.
 
 2. Activate the environment with `conda activate mbrl`.
 
-3. Install the [generative regression branch of `ramp-workflow`](https://github.com/paris-saclay-cds/ramp-workflow/pull/193) by running
+3. Install `pytorch`:
 ```
-pip install git+https://github.com/paris-saclay-cds/ramp-workflow.git@generative_regression_clean
+pip install torch==1.9.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+```
+
+4. Install the packages listed in `requirements.txt`:
+```
+pip install -r requirements.txt
+```
+
+5. Install the [`generative_regression_clean` branch of `ramp-workflow`](https://github.com/paris-saclay-cds/ramp-workflow) by running
+```
+pip install git+https://github.com/paris-saclay-cds/ramp-workflow.git@180db08499a3cd8b3894fa69a3d6e42d1ee2cafb
 ```
 
 4. Install the `mbrl-tools` package by running `pip install .` in the `mbrl-tools/` directory.
-
-With this installation you can run all the models of the ICLR 2021 paper. If you do not want to run all the models you might only need a subset of the packages listed in `environment.yml`.
 
 Finally, if you want to run the inverted pendulum experiments you need [MuJoCo 2.0](http://www.mujoco.org/index.html) and [mujoco-py](https://github.com/openai/mujoco-py). `mujoco-py` can be installed easily with `pip install mujoco-py`.
 
